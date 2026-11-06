@@ -106,6 +106,10 @@ class OrganizationMastersTest extends TestCase
         $leaf = Fixture::insert('locations', 'LEAF', 'Ruang 1', ['branch_id' => $tree['branch'], 'parent_id' => $child]);
         $this->as(Fixture::actor($tree)->assignRole(IdentityAccess::SUPER_ADMIN));
 
+        $invalid = array_fill_keys(['owner_id', 'parent_id', 'master_code', 'name', 'is_active'], ['unexpected']);
+        $this->from('/masters/locations/new')->post('/masters/locations', $invalid)->assertSessionHasErrors(array_keys($invalid));
+        $this->get('/masters/locations/new')->assertOk()->assertSee(__('masters.create_locations'));
+
         foreach ([$root, $leaf, $other['location'], 999999999] as $parent) {
             $this->from('/masters/locations/'.$root)->put('/masters/locations/'.$root, Fixture::data($tree['code'], ['parent_id' => $parent]))
                 ->assertSessionHasErrors('parent_id')->assertSessionHasInput('master_code', $tree['code']);

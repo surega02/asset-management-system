@@ -21,7 +21,7 @@
                 <x-ui.button type="submit">{{ __('iam.logout') }}</x-ui.button>
             </form>
         </nav>
-        <h1>{{ $title }}</h1>
+        <h1 class="wrap-anywhere">{{ $title }}</h1>
         <x-ui.feedback />
         {{ $slot }}
     </div>

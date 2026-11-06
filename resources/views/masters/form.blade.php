@@ -1,3 +1,14 @@
+@php
+    $textInput = static function (string $key, mixed $default = null): string {
+        $value = old($key, $default);
+
+        return is_scalar($value) ? (string) $value : '';
+    };
+    $selectedOwner = $textInput('owner_id', $record?->branch_id);
+    $selectedParent = $textInput('parent_id', $record?->parent_id);
+    $selectedStatus = $textInput('is_active', $record ? (int) $record->is_active : 1);
+@endphp
+
 <x-layouts.account :title="$record?->name ?? __('masters.create_'.$type->value)">
     <a class="nav-link justify-self-start" href="{{ route('masters.index', ['type' => $type, 'status' => $record && !$record->is_active ? 'archived' : null]) }}">
         {{ __('masters.back', ['section' => __('masters.'.$type->value)]) }}
@@ -19,14 +30,14 @@
             <p>{{ __('masters.no_owner') }}</p>
         @else
             <form method="post" action="{{ $record ? route('masters.update', [$type, $record]) : route('masters.store', $type) }}"
-                class="grid gap-4" x-data="{ branch: @js((string) old('owner_id', $record?->branch_id)) }">
+                class="grid gap-4" x-data="{ branch: @js($selectedOwner) }">
                 @csrf
                 @if($record)
                     @method('PUT')
                 @endif
 
-                <x-ui.field name="name" :label="__('masters.name')" :value="old('name', $record?->name)" required maxlength="255" />
-                <x-ui.field name="master_code" :label="__('masters.code')" :value="old('master_code', $record?->code)" required maxlength="64" />
+                <x-ui.field name="name" :label="__('masters.name')" :value="$textInput('name', $record?->name)" required maxlength="255" />
+                <x-ui.field name="master_code" :label="__('masters.code')" :value="$textInput('master_code', $record?->code)" required maxlength="64" />
 
                 @if($type->owner())
                     @if($record)
@@ -42,7 +53,7 @@
                                 @error('owner_id') aria-invalid="true" aria-describedby="owner-error" @enderror>
                                 <option value="">{{ __('masters.choose_owner') }}</option>
                                 @foreach($owners as $owner)
-                                    <option value="{{ $owner->id }}" @selected((string) old('owner_id') === (string) $owner->id)>
+                                    <option value="{{ $owner->id }}" @selected($selectedOwner === (string) $owner->id)>
                                         {{ $owner->name }} ({{ $owner->code }}){{ $type === \App\Support\MasterType::Department ? ' · '.$owner->owner->name : '' }}
                                     </option>
                                 @endforeach
@@ -62,7 +73,7 @@
                             @foreach($parents as $parent)
                                 <option value="{{ $parent->id }}" data-branch="{{ $parent->branch_id }}"
                                     @if(!$record) :hidden="$el.dataset.branch !== branch" :disabled="$el.dataset.branch !== branch" @endif
-                                    @selected((string) old('parent_id', $record?->parent_id) === (string) $parent->id)>
+                                    @selected($selectedParent === (string) $parent->id)>
                                     {{ $parent->name }} ({{ $parent->code }})
                                 </option>
                             @endforeach
@@ -77,8 +88,8 @@
                     <select id="is_active" name="is_active" class="ui-select w-full" required
                         aria-describedby="archive-help @error('is_active') status-error @enderror"
                         @error('is_active') aria-invalid="true" @enderror>
-                        <option value="1" @selected((string) old('is_active', $record ? (int) $record->is_active : 1) === '1')>{{ __('masters.active') }}</option>
-                        <option value="0" @selected((string) old('is_active', $record ? (int) $record->is_active : 1) === '0')>{{ __('masters.archived') }}</option>
+                        <option value="1" @selected($selectedStatus === '1')>{{ __('masters.active') }}</option>
+                        <option value="0" @selected($selectedStatus === '0')>{{ __('masters.archived') }}</option>
                     </select>
                     <p id="archive-help" class="text-sm">{{ __('masters.archive_help') }}</p>
                     @error('is_active') <p id="status-error" class="text-sm text-[var(--error)]">{{ $message }}</p> @enderror
