@@ -24,9 +24,11 @@ $env:APP_KEY = php artisan key:generate --show
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Buka [pratinjau lokal](http://127.0.0.1:8000). Untuk contoh Jakarta gunakan `AST-000128`, lalu pilih Bandung dan coba `AST-000127`.
+Buka halaman publik di `/` atau langsung ke [pratinjau dashboard](http://127.0.0.1:8000/preview) pada environment lokal. Untuk contoh Jakarta gunakan `AST-000128`, lalu pilih Bandung dan coba `AST-000127`. Ganti bahasa saat hasil pencarian terbuka untuk memeriksa bahwa cabang, isian, dan hasil tetap tersedia.
 
 ```powershell
 php vendor/bin/phpunit
 php vendor/bin/pint --test
 ```
+
+Pengujian koneksi dan antrean MySQL memerlukan skema uji khusus. [Panduan M01](foundation.md)

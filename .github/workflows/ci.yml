@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root-ci-only
+          MYSQL_DATABASE: ams_m01_test
+          MYSQL_USER: ams
+          MYSQL_PASSWORD: ams-ci-only
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      APP_ENV: testing
+      AMS_TEST_MYSQL: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: ams_m01_test
+      DB_USERNAME: ams
+      DB_PASSWORD: ams-ci-only
+      QUEUE_CONNECTION: database
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: shivammathur/setup-php@2.40.0
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql
+          coverage: none
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: npm ci
+      - run: npm run build
+      - run: php vendor/bin/pint --test
+      - name: Migrate and test against MySQL
+        env:
+          DB_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          php artisan migrate --force
+          php vendor/bin/phpunit
