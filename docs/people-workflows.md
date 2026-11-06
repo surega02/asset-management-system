@@ -22,3 +22,12 @@ Issue [#7](https://github.com/surega02/asset-management-system/issues/7). Menu *
 
 - Jalankan `php artisan migrate --seed --force` untuk histori, jadwal, lock, batch, dan izin baru. Pada server yang sudah termigrasi, seeder izin bisa diulang: `php artisan db:seed --class=IdentitySeeder --force`. Pastikan PHP memiliki ZIP dan SimpleXML serta scheduler berjalan. Untuk rollback aplikasi, kembali ke kode sebelumnya dan pertahankan tabel agar histori/hasil tetap tersedia.
 - Tes terfokus: `php vendor/bin/phpunit --filter 'PeopleWorkflowsTest|PeopleConcurrencyTest'`. Atur `AMS_TEST_MYSQL=1` dan gunakan skema MySQL khusus berakhiran `_test` dengan migrasi aktif. Tes konkurensi membaca `information_schema.PROCESSLIST` untuk memastikan proses benar-benar menunggu lock sebelum transaksi pertama dilepas.
+### Bukti UAT
+
+UAT memakai data sintetis. Di desktop, perpindahan Bandung ke Jakarta menampilkan unit lama, unit baru, aktor, dan alasan. Fokus keyboard pada filter status terlihat. Di layar 390 px dalam tema gelap, daftar menunjukkan Acting saat periode tumpang tindih dan mengembalikan prioritas ke definitif setelah Acting berakhir. Impor CSV dalam locale Mandarin menampilkan satu baris berhasil dan satu baris gagal karena tanggal tidak valid.
+
+- [Perpindahan karyawan dan riwayat di desktop](evidence/m04/employee-transfer-desktop.png)
+- [Pejabat efektif di ponsel dalam bahasa Inggris](evidence/m04/appointments-mobile.png)
+- [Hasil parsial impor CSV di ponsel dalam bahasa Mandarin](evidence/m04/import-partial-mobile-zh.png)
+
+GitHub Actions memverifikasi migrasi, build Tailwind, Pint, dan PHPUnit dengan PHP 8.3 dan MySQL 8.4. Suite lulus dengan 30 tes dan 533 asersi, termasuk XLSX dan tes konkurensi. [Log CI implementasi](https://github.com/surega02/asset-management-system/actions/runs/42192790286)
