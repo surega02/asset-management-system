@@ -16,7 +16,7 @@ final class IdentityAccess
 
     public const ROLES = [self::SUPER_ADMIN, 'asset-admin', 'asset-officer', 'leader', 'employee'];
 
-    public const PERMISSIONS = ['users.view', 'users.manage', 'users.reset', 'users.access', 'roles.manage', 'settings.manage', OrganizationMasters::VIEW, OrganizationMasters::MANAGE, ...PeopleScope::PERMISSIONS, AssetMasterPolicy::VIEW, AssetMasterPolicy::MANAGE, Assets::VIEW, Assets::CREATE, Assets::LIFECYCLE, Assets::UPDATE_STATE, Assets::REASSIGN, Assets::MOVE];
+    public const PERMISSIONS = ['users.view', 'users.manage', 'users.reset', 'users.access', 'roles.manage', 'settings.manage', OrganizationMasters::VIEW, OrganizationMasters::MANAGE, ...PeopleScope::PERMISSIONS, AssetMasterPolicy::VIEW, AssetMasterPolicy::MANAGE, Assets::VIEW, Assets::CREATE, Assets::LIFECYCLE, Assets::UPDATE_STATE, Assets::REASSIGN, Assets::MOVE, Assets::PRINT_LABEL];
 
     public static function superAdminCan(User $user, string $permission): bool
     {

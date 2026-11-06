@@ -1,9 +1,15 @@
 <x-layouts.account :title="__('assets.title')">
     <div class="flex flex-wrap items-start justify-between gap-3">
         <p>{{ __('assets.list_help') }}</p>
-        @can('create', \App\Models\Asset::class)
-            <a class="ui-button ui-button-primary" href="{{ route('assets.create') }}">{{ __('assets.register') }}</a>
-        @endcan
+        <div class="flex flex-wrap gap-2">
+            <a class="ui-button" href="{{ route('assets.scan') }}">{{ __('qr.scan_title') }}</a>
+            @can('printAny', \App\Models\Asset::class)
+                <a class="ui-button" href="{{ route('assets.labels.create') }}">{{ __('qr.labels') }}</a>
+            @endcan
+            @can('create', \App\Models\Asset::class)
+                <a class="ui-button ui-button-primary" href="{{ route('assets.create') }}">{{ __('assets.register') }}</a>
+            @endcan
+        </div>
     </div>
     <form method="get" class="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
         <x-ui.field name="q" type="search" :label="__('masters.search')" :value="$search" maxlength="255" />

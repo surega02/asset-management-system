@@ -129,6 +129,8 @@ class AssetLifecycleTest extends TestCase
         $this->assertFalse($asset->fresh()->is_active);
         $this->assertNotNull($original->fresh()->ended_at);
         $this->assertSame($asset->status_id, $asset->fresh()->status_id);
+        $qr = '/q/'.$asset->public_token;
+        $this->get($qr)->assertOk()->assertViewHas('fields', fn (array $fields): bool => $fields['status'] === __('assets.inactive'));
         $this->invalid(fn () => $lifecycle->updateState($actor, $asset, []), 'is_active');
         $state = $asset->only(['status_id', 'condition_id']) + ['reason' => 'Returned'];
         $this->invalid(fn () => $lifecycle->reactivate($actor, $asset, $state), 'assignee');
@@ -140,6 +142,7 @@ class AssetLifecycleTest extends TestCase
         $this->assertTrue($fresh->is_active);
         $this->assertSame($asset->asset_code, $fresh->asset_code);
         $this->assertSame($asset->public_token, $fresh->public_token);
+        $this->get($qr)->assertOk()->assertViewHas('fields', fn (array $fields): bool => $fields['status'] === $fresh->status->name);
         $this->assertNotSame($original->id, $fresh->activeAssignment()->sole()->id);
         $this->assertSame($tree['location'], $fresh->activeAssignment()->sole()->location_id);
         $this->assertNotNull($original->fresh()->ended_at);

@@ -23,7 +23,9 @@ class ProtectIdentitySession
 
         $response = $next($request);
         $response->headers->set('Cache-Control', 'no-store, private');
-        $response->headers->set('Referrer-Policy', 'same-origin');
+        if (! $response->headers->has('Referrer-Policy')) {
+            $response->headers->set('Referrer-Policy', 'same-origin');
+        }
 
         return $response;
     }

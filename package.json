@@ -2,10 +2,12 @@
   "name": "ams",
   "private": true,
   "scripts": {
-    "build": "tailwindcss -i resources/css/app.css -o public/build/app.css --minify"
+    "build": "tailwindcss -i resources/css/app.css -o public/build/app.css --minify && node scripts/build-browser-assets.mjs",
+    "test:scanner": "node --test tests/Frontend/asset-scanner.test.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.0",
+    "jsqr": "1.4.0",
     "tailwindcss": "^4.1.0"
   }
 }
