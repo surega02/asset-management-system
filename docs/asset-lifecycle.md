@@ -22,3 +22,13 @@ Issue [#11](https://github.com/surega02/asset-management-system/issues/11). Buka
 Jalankan `php artisan migrate --seed --force` untuk tabel aset, penugasan, atribut, histori lokasi, lampiran, deaktivasi, dan FK audit. Aktifkan ekstensi PHP GD dan fileinfo. Atur batas request server agar memuat foto 5 MB dan invoice 10 MB dalam satu request, termasuk overhead multipart. Rollback aplikasi dapat mengembalikan kode dan mempertahankan tabel serta file privat. Rollback migrasi M06 menjatuhkan tabel baru, sehingga hanya sesuai untuk skema uji kosong.
 
 Jalankan `php vendor/bin/phpunit --filter 'AssetLifecycleTest|PeopleConcurrencyTest'` dengan `AMS_TEST_MYSQL=1` dan skema MySQL berakhiran `_test`. Gunakan `php vendor/bin/phpunit`, `php vendor/bin/pint --test`, dan `npm run build` untuk verifikasi penuh.
+
+### Bukti pengujian
+
+Enam tes fitur M06 lulus dengan 94 asersi pada MySQL 8.0.30 lokal. Migrasi M06 juga berhasil di-rollback dan dipasang ulang pada skema uji kosong. Percobaan tes proses paralel lokal kehilangan akses ke autoloader salinan runtime. GitHub Actions menjalankan suite penuh pada MySQL 8.4 dan lulus dengan 43 tes dan 738 asersi, termasuk alokasi nomor paralel, balapan dengan deaktivasi karyawan, rollback transaksi, dan Policy unduhan. Pint serta build Tailwind lulus. [CI implementasi](https://github.com/surega02/asset-management-system/actions/runs/42235204514)
+
+UAT memakai data sintetis. Registrasi memilih Tersedia dan Baik, menyimpan atribut jenis, lalu menampilkan kode unit dan penanggung jawab. Deaktivasi menutup penugasan. Reaktivasi memilih penanggung jawab baru dan mempertahankan kode yang sama. Pemeriksaan mencakup fokus keyboard, desktop terang, ponsel gelap 390 px, serta locale Indonesia, Inggris, dan Mandarin. Detektor Impeccable melaporkan nol temuan pada Blade aset.
+
+- [Registrasi aset dan pilihan default di desktop](evidence/m06/registration-desktop.png)
+- [Aset setelah deaktivasi di ponsel](evidence/m06/deactivated-mobile.png)
+- [Aset setelah reaktivasi dalam locale Mandarin](evidence/m06/reactivated-mobile-zh.png)
