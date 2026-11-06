@@ -11,12 +11,17 @@
             @can('manage-access-catalog')
                 <a class="nav-link" href="{{ route('catalog.index') }}">{{ __('iam.catalog') }}</a>
             @endcan
+            @can('viewAny', \App\Models\Branch::class)
+                <a @class(['nav-link', 'nav-link-current' => request()->routeIs('masters.*')])
+                    href="{{ route('masters.index', \App\Support\MasterType::Branch) }}"
+                    @if(request()->routeIs('masters.*')) aria-current="true" @endif>{{ __('masters.title') }}</a>
+            @endcan
             <form method="post" action="{{ route('logout') }}" class="sm:ms-auto">
                 @csrf
                 <x-ui.button type="submit">{{ __('iam.logout') }}</x-ui.button>
             </form>
         </nav>
-        <h1>{{ $title }}</h1>
+        <h1 class="wrap-anywhere">{{ $title }}</h1>
         <x-ui.feedback />
         {{ $slot }}
     </div>

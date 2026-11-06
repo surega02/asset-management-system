@@ -15,6 +15,7 @@ Route::post('/language', function (Request $request): RedirectResponse {
 })->name('language');
 
 require __DIR__.'/identity.php';
+require __DIR__.'/organization.php';
 
 if (app()->environment('local', 'testing')) {
     Route::livewire('/preview', Dashboard::class)->name('preview.dashboard');
