@@ -4,12 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 class Employee extends Model
 {
     protected $guarded = ['id'];
+
+    protected $casts = ['joined_at' => 'immutable_date'];
 
     protected static function booted(): void
     {
@@ -32,5 +35,20 @@ class Employee extends Model
     public function user(): HasOne
     {
         return $this->hasOne(User::class);
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(Position::class);
+    }
+
+    public function homeLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 }

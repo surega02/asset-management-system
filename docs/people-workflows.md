@@ -1,0 +1,24 @@
+# M04 — Karyawan dan penugasan pejabat
+
+Issue [#7](https://github.com/surega02/asset-management-system/issues/7). Menu **Karyawan** dan **Penugasan pejabat** tersedia dari ruang kerja sesuai izin dan cakupan data.
+
+| PRD | Perilaku | Tes |
+| --- | --- | --- |
+| EMP-001 / IAM-001 | Buat dan ubah profil, hitung masa kerja dari tanggal bergabung, pertahankan NIK termasuk saat nonaktif. Pembuatan karyawan tidak membuat akun. | `PeopleWorkflowsTest`: pendaftaran, NIK tetap, tidak ada akun otomatis, akses lintas cakupan, CSV/XLSX. |
+| EMP-002 | Periksa cakupan sumber dan tujuan, peringatkan penugasan langsung, simpan unit lama/baru, aktor, waktu, dan alasan. Assignment dan lokasi aset tetap. | `PeopleWorkflowsTest` dan `PeopleConcurrencyTest`: cakupan, histori/audit, perpindahan pemegang aset. |
+| EMP-003 | Karyawan yang punya assignment aktif langsung tidak dapat dinonaktifkan. | `PeopleConcurrencyTest`: dua urutan kompetisi antara assignment dan deaktivasi pada MySQL. |
+| ORG-002 / T-008 | HOD untuk departemen; Director untuk divisi, cabang, atau perusahaan. Tanggal inklusif, Acting mendahului definitif; overlap sejenis ditolak. | `PeopleWorkflowsTest` dan `PeopleConcurrencyTest`: prioritas dan kembali ke definitif, batas inklusif, scope, dua insert paralel. |
+
+### Cakupan dan integritas
+
+- `employees.view` + grant organisasi memberi akses baca karyawan sesuai departemen; `employees.manage` mengizinkan mutasi dalam cakupan itu. Transfer memeriksa departemen asal dan tujuan. Untuk penempatan baru, pilih unit dan lokasi kerja aktif di cabang departemen. Jabatan adalah referensi katalog. Status karyawan dan status akun login terpisah.
+- `appointments.view` dan `appointments.manage` memakai grant unit yang sesuai, serta cakupan kandidat saat membuat penugasan. Penugasan perusahaan memerlukan izin Super Admin yang relevan. Simpan jadwal dengan tanggal akhir opsional, atau ubah tanggal akhir dengan alasan. Histori tersimpan dalam audit. Transaksi menyerialkan penulisan jadwal pada kunci stabil `(role_kind, scope_type, scope_id)` dengan sentinel `0` untuk perusahaan.
+- M04 tidak menyediakan skema produksi aset. Selama tabel aset belum ada, tidak ada assignment yang perlu diperiksa. Saat M06/M07 mulai menulis assignment langsung, registrasi, reaktivasi, dan pergantian penanggung jawab **wajib** memanggil `DirectEmployeeAssignments::lockEligibleAssignee()` dalam transaksi sebelum insert. Deaktivasi memakai lock karyawan yang sama dan membaca assignment aktif dengan locking read. Fixture tes menggunakan MySQL FK, CHECK tepat satu target, unique generated active asset, dan transaksi yang selalu membuat aset aktif bersama assignment.
+- Daftar peringatan hanya menampilkan kode/nama aset jika izin `assets.view` dan cakupan lokasi fisik atau hak baca personal terpenuhi. Jumlah assignment diperlukan untuk tindakan perpindahan/deaktivasi. Pengiriman notifikasi dalam aplikasi mengikuti M11.
+- Impor karyawan menerima CSV UTF-8 atau lembar pertama XLSX. Unduh template dari layar impor; ID unit diambil dari opsi bercakupan, NIK XLSX harus berupa teks, tanggal CSV memakai YYYY-MM-DD. Maksimal 1.000 baris data dan 10 MB. Parser tidak mengevaluasi formula, mengikuti tautan eksternal, atau mengekstrak ZIP ke disk; ada batas ukuran setelah dekompresi.
+- Unggah mempersiapkan batch tanpa membuat karyawan. Proses hingga 50 baris sekali klik; kembali ke batch untuk melanjutkan. Identitas batch per pengunggah dan hash berkas, nomor baris unik, dan sukses terminal. Setiap baris berhasil menyimpan karyawan, audit, dan hasil dalam satu transaksi; kegagalan tidak membatalkan baris lain. Coba ulang baris gagal secara eksplisit; untuk isi yang keliru, unggah hanya baris yang telah diperbaiki. Payload sementara terenkripsi; payload sukses dibuang. Scheduler membersihkan batch dan hasil setelah 90 hari. Audit dipertahankan.
+
+### Rilis dan pengujian
+
+- Jalankan `php artisan migrate --seed --force` untuk histori, jadwal, lock, batch, dan izin baru. Pada server yang sudah termigrasi, seeder izin bisa diulang: `php artisan db:seed --class=IdentitySeeder --force`. Pastikan PHP memiliki ZIP dan SimpleXML serta scheduler berjalan. Untuk rollback aplikasi, kembali ke kode sebelumnya dan pertahankan tabel agar histori/hasil tetap tersedia.
+- Tes terfokus: `php vendor/bin/phpunit --filter 'PeopleWorkflowsTest|PeopleConcurrencyTest'`. Atur `AMS_TEST_MYSQL=1` dan gunakan skema MySQL khusus berakhiran `_test` dengan migrasi aktif. Tes konkurensi membaca `information_schema.PROCESSLIST` untuk memastikan proses benar-benar menunggu lock sebelum transaksi pertama dilepas.
