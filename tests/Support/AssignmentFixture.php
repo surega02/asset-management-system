@@ -2,49 +2,42 @@
 
 namespace Tests\Support;
 
-use App\Actions\Employees\DirectEmployeeAssignments;
-use Illuminate\Database\Schema\Blueprint;
+use App\Actions\Assets\RegisterAsset;
+use App\Models\AssetCategory;
+use App\Models\AssetType;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final class AssignmentFixture
 {
-    public static function migrate(): void
+    public static function type(): AssetType
     {
-        Schema::create('assets', function (Blueprint $table): void {
-            $table->id();
-            $table->string('asset_code')->unique();
-            $table->string('name');
-            $table->foreignId('physical_location_id')->constrained('locations')->restrictOnDelete();
-            $table->boolean('is_active');
-        });
-        Schema::create('asset_assignments', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('asset_id')->constrained()->restrictOnDelete();
-            $table->foreignId('employee_id')->nullable()->constrained()->restrictOnDelete();
-            $table->foreignId('department_id')->nullable()->constrained()->restrictOnDelete();
-            $table->foreignId('location_id')->nullable()->constrained()->restrictOnDelete();
-            $table->timestamp('started_at');
-            $table->timestamp('ended_at')->nullable();
-            $table->unsignedBigInteger('active_asset_id')->storedAs('IF(ended_at IS NULL, asset_id, NULL)')->unique();
-            $table->index(['employee_id', 'ended_at']);
-        });
-        DB::statement('ALTER TABLE asset_assignments ADD CONSTRAINT assignment_fixture_target CHECK
-            ((employee_id IS NOT NULL) + (department_id IS NOT NULL) + (location_id IS NOT NULL) = 1),
-            ADD CONSTRAINT assignment_fixture_range CHECK (ended_at IS NULL OR ended_at > started_at)');
+        $code = 'QA-'.Str::random(12);
+        $category = AssetCategory::query()->create(['code' => $code, 'name' => 'Fixture category']);
+
+        return AssetType::query()->create(['code' => $code, 'name' => 'Fixture type', 'category_id' => $category->id]);
     }
 
-    public static function assign(int $employee, int $location): int
+    public static function assign(User $actor, int $employee, int $location, int $typeId): int
     {
-        return DB::transaction(function () use ($employee, $location): int {
-            DirectEmployeeAssignments::lockEligibleAssignee($employee);
-            $asset = DB::table('assets')->insertGetId([
-                'asset_code' => 'M04-'.Str::random(12), 'name' => 'Aset sintetis', 'physical_location_id' => $location, 'is_active' => true,
-            ]);
-            DB::table('asset_assignments')->insert(['asset_id' => $asset, 'employee_id' => $employee, 'started_at' => now()]);
+        $type = AssetType::query()->findOrFail($typeId);
 
-            return $asset;
-        });
+        return app(RegisterAsset::class)($actor, [
+            'name' => 'Aset sintetis', 'physical_location_id' => $location, 'employee_id' => $employee,
+            'asset_type_id' => $type->id, 'category_id' => $type->category_id,
+            'purchase_date' => '2026-01-15', 'acquisition_cost' => '1.25',
+        ])->id;
+    }
+
+    public static function clean(AssetType $type): void
+    {
+        $ids = DB::table('assets')->where('asset_type_id', $type->id)->pluck('id');
+        foreach (['audit_logs', 'asset_location_histories', 'asset_assignments'] as $table) {
+            DB::table($table)->whereIn('asset_id', $ids)->delete();
+        }
+        DB::table('assets')->whereIn('id', $ids)->delete();
+        DB::table('asset_types')->where('id', $type->id)->delete();
+        DB::table('asset_categories')->where('id', $type->category_id)->delete();
     }
 }

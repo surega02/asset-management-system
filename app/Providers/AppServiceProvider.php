@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Asset;
 use App\Models\Employee;
 use App\Models\StructuralAppointment;
 use App\Models\User;
 use App\Policies\AssetMasterPolicy;
+use App\Policies\AssetPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\OrganizationMasterPolicy;
 use App\Policies\StructuralAppointmentPolicy;
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Asset::class, AssetPolicy::class);
         Gate::policy(Employee::class, EmployeePolicy::class);
         Gate::policy(StructuralAppointment::class, StructuralAppointmentPolicy::class);
         foreach (MasterType::cases() as $type) {

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\User;
 use App\Policies\AssetMasterPolicy;
+use App\Queries\Assets;
 use App\Queries\OrganizationMasters;
 use App\Queries\PeopleScope;
 use Spatie\Permission\Models\Role;
@@ -15,7 +16,7 @@ final class IdentityAccess
 
     public const ROLES = [self::SUPER_ADMIN, 'asset-admin', 'asset-officer', 'leader', 'employee'];
 
-    public const PERMISSIONS = ['users.view', 'users.manage', 'users.reset', 'users.access', 'roles.manage', 'settings.manage', OrganizationMasters::VIEW, OrganizationMasters::MANAGE, ...PeopleScope::PERMISSIONS, AssetMasterPolicy::VIEW, AssetMasterPolicy::MANAGE];
+    public const PERMISSIONS = ['users.view', 'users.manage', 'users.reset', 'users.access', 'roles.manage', 'settings.manage', OrganizationMasters::VIEW, OrganizationMasters::MANAGE, ...PeopleScope::PERMISSIONS, AssetMasterPolicy::VIEW, AssetMasterPolicy::MANAGE, Assets::VIEW, Assets::CREATE, Assets::LIFECYCLE, Assets::UPDATE_STATE];
 
     public static function superAdminCan(User $user, string $permission): bool
     {
