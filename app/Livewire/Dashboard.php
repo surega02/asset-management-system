@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Support\Locale;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -46,7 +47,7 @@ class Dashboard extends Component
     public string $assetCode = '';
 
     #[Locked]
-    public ?string $matchedCode = null;
+    public ?string $searchedCode = null;
 
     public function boot(): void
     {
@@ -55,29 +56,28 @@ class Dashboard extends Component
 
     public function updatedBranch(): void
     {
-        $this->reset('assetCode', 'matchedCode');
+        $this->reset('searchedCode');
         $this->resetValidation();
+    }
+
+    public function changeLocale(string $value): void
+    {
+        $locale = Locale::set($value);
+
+        $this->dispatch('ams-locale-changed', locale: $locale, title: __('dashboard.dashboard').' · AMS');
     }
 
     public function lookup(): void
     {
-        $this->reset('matchedCode');
+        $this->reset('searchedCode');
         $this->resetValidation();
         $this->assetCode = strtoupper(trim($this->assetCode));
         $this->validate(
             ['assetCode' => ['required', 'regex:/\AAST-[0-9]{6}\z/']],
-            ['assetCode.required' => __('dashboard.lookup_required'), 'assetCode.regex' => __('dashboard.lookup_format')],
+            ['assetCode.required' => 'dashboard.lookup_required', 'assetCode.regex' => 'dashboard.lookup_format'],
         );
 
-        $match = collect($this->currentBranch()['assets'])->firstWhere(0, $this->assetCode);
-
-        if ($match === null) {
-            $this->addError('assetCode', __('dashboard.lookup_missing'));
-
-            return;
-        }
-
-        $this->matchedCode = $match[0];
+        $this->searchedCode = $this->assetCode;
     }
 
     private function currentBranch(): array
@@ -97,13 +97,14 @@ class Dashboard extends Component
             'branchNames' => array_column(self::BRANCHES, 'name'),
             'branchKeys' => array_keys(self::BRANCHES),
             'branchName' => $branch['name'],
+            'exampleCode' => $branch['assets'][0][0] ?? '',
             'locations' => $branch['locations'],
             'locationTotals' => $assets->countBy(2),
             'total' => $assets->count(),
             'active' => $active,
             'inactive' => $assets->count() - $active,
             'activity' => $assets->filter(fn (array $asset): bool => isset($asset[4])),
-            'match' => $assets->firstWhere(0, $this->matchedCode),
+            'match' => $assets->firstWhere(0, $this->searchedCode),
         ])->layout('components.layouts.app');
     }
 }

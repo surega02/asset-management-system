@@ -1,3 +1,4 @@
+<x-layouts.shell>
 <div class="dashboard">
     <div class="dashboard-heading">
         <div>
@@ -26,8 +27,8 @@
                     <div class="lookup-fields">
                         <div class="lookup-input">
                             <x-ui.icon name="search" class="size-4" />
-                            <input id="asset-code" x-ref="assetCode" type="text" wire:model="assetCode" placeholder="AST-000128"
-                                maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                            <input id="asset-code" x-ref="assetCode" type="text" wire:model="assetCode" placeholder="{{ $exampleCode }}"
+                                maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false"
                                 @error('assetCode') aria-invalid="true" aria-describedby="lookup-error" @enderror>
                         </div>
                         <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="lookup,branch">
@@ -51,14 +52,19 @@
 
         <div aria-live="polite">
             @error('assetCode')
-                <p class="lookup-error" id="lookup-error">{{ $message }}</p>
+                <p class="lookup-error" id="lookup-error">{{ __($message) }}</p>
             @enderror
-            @if($match)
+            @if($searchedCode !== null)
                 <div class="lookup-result">
-                    <strong>{{ __('dashboard.result') }}</strong>
-                    <span class="asset-code">{{ $match[0] }}</span>
-                    <span>{{ $match[1] }} · {{ $locations[$match[2]] }}</span>
-                    <span class="status-tag">{{ __($match[3] ? 'dashboard.active_state' : 'dashboard.inactive_state') }}</span>
+                    <strong>{{ __('dashboard.last_search') }}</strong>
+                    <span class="asset-code">{{ $searchedCode }}</span>
+                    @if($match)
+                        <span class="sr-only">{{ __('dashboard.result') }}</span>
+                        <span>{{ $match[1] }} · {{ $locations[$match[2]] }}</span>
+                        <span class="status-tag">{{ __($match[3] ? 'dashboard.active_state' : 'dashboard.inactive_state') }}</span>
+                    @else
+                        <p>{{ __('dashboard.lookup_missing') }}</p>
+                    @endif
                 </div>
             @endif
         </div>
@@ -92,7 +98,7 @@
     </section>
 
     <div class="detail-grid">
-        <x-ui.panel class="detail-panel" id="locations" aria-labelledby="locations-title">
+        <x-ui.panel class="detail-panel" id="locations" aria-labelledby="locations-title" tabindex="-1">
             <div class="section-heading">
                 <h2 id="locations-title">{{ __('dashboard.locations') }}</h2>
                 <p>{{ __('dashboard.location_note') }}</p>
@@ -108,7 +114,7 @@
             </ul>
         </x-ui.panel>
 
-        <x-ui.panel id="activity" aria-labelledby="activity-title">
+        <x-ui.panel id="activity" aria-labelledby="activity-title" tabindex="-1">
             <div class="section-heading">
                 <h2 id="activity-title">{{ __('dashboard.activity') }}</h2>
                 <p>{{ __('dashboard.activity_note') }}</p>
@@ -128,7 +134,10 @@
                             <td>
                                 <span class="event-tag" data-event="{{ $asset[4] }}">{{ __('dashboard.'.$asset[4]) }}</span>
                                 @if(isset($asset[6]))
-                                    <span class="event-location">{{ $locations[$asset[6]] }} <x-ui.icon name="arrow" class="size-3" /> {{ $locations[$asset[2]] }}</span>
+                                    <span class="event-location">
+                                        {{ $locations[$asset[6]] }} <x-ui.icon name="arrow" class="size-3" />
+                                        <span class="sr-only">{{ __('dashboard.location_to') }}</span> {{ $locations[$asset[2]] }}
+                                    </span>
                                 @endif
                             </td>
                             <td class="activity-time"><time>{{ $asset[5] }}</time></td>
@@ -139,3 +148,4 @@
         </x-ui.panel>
     </div>
 </div>
+</x-layouts.shell>
