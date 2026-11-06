@@ -70,6 +70,11 @@ final class Asset extends Model
         return $this->hasOne(AssetAssignment::class)->whereNull('ended_at');
     }
 
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(AssetAssignment::class);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(AssetAttachment::class);

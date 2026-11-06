@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'Penugasan dan lokasi',
+    'back_asset' => 'Kembali ke detail aset',
+    'independent' => 'Penanggung jawab dan lokasi fisik dapat diubah secara terpisah. Setiap perubahan memerlukan alasan.',
+    'assignment' => 'Penanggung jawab',
+    'current' => 'Saat ini',
+    'assignment_history' => 'Riwayat penugasan',
+    'location_history' => 'Riwayat lokasi fisik',
+    'ongoing' => 'Sedang berlaku',
+    'registration' => 'Registrasi aset',
+    'no_history' => 'Belum ada riwayat.',
+    'change_assignment' => 'Ganti penanggung jawab',
+    'save_assignment' => 'Simpan penugasan baru',
+    'move' => 'Pindahkan lokasi fisik',
+    'save_move' => 'Simpan perpindahan',
+    'destination' => 'Lokasi fisik tujuan',
+    'no_destinations' => 'Tidak ada lokasi tujuan aktif dalam cakupan Anda.',
+    'inactive' => 'Aktifkan kembali aset sebelum mengubah penugasan atau lokasi fisik.',
+    'stale_assignment' => 'Penugasan sudah berubah. Periksa penanggung jawab saat ini sebelum mengirim ulang.',
+    'stale_location' => 'Lokasi fisik sudah berubah. Periksa lokasi saat ini sebelum mengirim ulang.',
+    'same_assignee' => 'Pilih penanggung jawab yang berbeda.',
+    'same_location' => 'Pilih lokasi fisik yang berbeda.',
+    'assignment_saved' => 'Penanggung jawab diperbarui. Lokasi fisik tetap sama.',
+    'move_saved' => 'Perpindahan fisik tercatat. Penanggung jawab tetap sama.',
+];

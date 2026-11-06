@@ -18,6 +18,16 @@ final class AssetTargets
 {
     public const KEYS = ['employee_id', 'department_id', 'location_id'];
 
+    public static function decodeSelection(mixed $value): array
+    {
+        $target = Validator::make(['assignee' => $value], [
+            'assignee' => ['required', 'string', 'regex:/\A(employee|department|location):[1-9][0-9]{0,18}\z/'],
+        ], attributes: ['assignee' => __('assets.assignee')])->validate()['assignee'];
+        [$kind, $id] = explode(':', $target);
+
+        return [$kind.'_id' => $id];
+    }
+
     public function physical(User $actor, int $location, string $permission): Location
     {
         return Assets::locations($actor, $permission)->where('is_active', true)->sharedLock()->find($location)
