@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Models\Employee;
 use App\Models\StructuralAppointment;
 use App\Models\User;
+use App\Policies\AssetMasterPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\OrganizationMasterPolicy;
 use App\Policies\StructuralAppointmentPolicy;
 use App\Policies\UserPolicy;
+use App\Support\AssetMasterType;
 use App\Support\IdentityAccess;
 use App\Support\MasterType;
 use Illuminate\Support\Facades\Gate;
@@ -23,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(StructuralAppointment::class, StructuralAppointmentPolicy::class);
         foreach (MasterType::cases() as $type) {
             Gate::policy($type->model(), OrganizationMasterPolicy::class);
+        }
+        foreach (AssetMasterType::cases() as $type) {
+            Gate::policy($type->model(), AssetMasterPolicy::class);
         }
         Gate::define('manage-access-catalog', fn (User $actor): bool => IdentityAccess::superAdminCan($actor, 'roles.manage'));
         Gate::define('update-global-settings', fn (User $actor): bool => IdentityAccess::superAdminCan($actor, 'settings.manage'));
