@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\Asset;
+use App\Models\User;
+use App\Queries\Assets;
+
+final class AssetPolicy
+{
+    public function viewAny(User $actor): bool
+    {
+        return $actor->is_active && $actor->checkPermissionTo(Assets::VIEW);
+    }
+
+    public function view(User $actor, Asset $asset): bool
+    {
+        return Assets::visible($actor)->whereKey($asset->id)->exists();
+    }
+
+    public function create(User $actor, ?int $locationId = null): bool
+    {
+        return $this->viewAny($actor) && Assets::locations($actor, Assets::CREATE)
+            ->when($locationId !== null, fn ($query) => $query->whereKey($locationId))->exists();
+    }
+
+    public function lifecycle(User $actor, Asset $asset): bool
+    {
+        return $this->canOperate($actor, $asset, Assets::LIFECYCLE);
+    }
+
+    public function updateState(User $actor, Asset $asset): bool
+    {
+        return $this->canOperate($actor, $asset, Assets::UPDATE_STATE);
+    }
+
+    private function canOperate(User $actor, Asset $asset, string $permission): bool
+    {
+        return $this->viewAny($actor) && Assets::locations($actor, $permission)->whereKey($asset->physical_location_id)->exists();
+    }
+}

@@ -8,7 +8,6 @@ use App\Support\IdentityAccess;
 use Database\Seeders\IdentitySeeder;
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Process\Process;
 use Tests\Support\AssignmentFixture;
@@ -59,18 +58,17 @@ class PeopleConcurrencyTest extends TestCase
 
     public function test_emp_002_and_emp_003_assignment_and_deactivation_cannot_both_win(): void
     {
-        $this->assertFalse(Schema::hasTable('assets'));
-        $this->assertFalse(Schema::hasTable('asset_assignments'));
-        AssignmentFixture::migrate();
+        $type = AssignmentFixture::type();
         $source = Fixture::tree();
         $dest = Fixture::tree();
         $actor = Fixture::actor($source)->assignRole(IdentityAccess::SUPER_ADMIN);
+        $registrar = Fixture::actor($source)->assignRole(IdentityAccess::SUPER_ADMIN);
         $holder = Fixture::actor($source);
         $second = Fixture::actor($source);
         $processes = [];
         try {
             DB::beginTransaction();
-            $asset = AssignmentFixture::assign($holder->employee_id, $source['location']);
+            $asset = AssignmentFixture::assign($registrar, $holder->employee_id, $source['location'], $type->id);
             $processes[] = $this->start('deactivate', $actor, $holder->employee_id, 0);
             $this->waitForLocks([$processes[0]], 'select % from '.chr(96).'employees'.chr(96).'%for update');
             DB::commit();
@@ -78,7 +76,7 @@ class PeopleConcurrencyTest extends TestCase
             $this->assertSame('active', $holder->employee->fresh()->employment_status);
 
             $this->actingAs($actor)->withSession(['auth.version' => $actor->auth_version])
-                ->get('/employees/'.$holder->employee_id)->assertOk()->assertSee(__('people.assets_warning', ['count' => 1]))->assertDontSee('Aset sintetis');
+                ->get('/employees/'.$holder->employee_id)->assertOk()->assertSee(__('people.assets_warning', ['count' => 1]))->assertSee('Aset sintetis');
             $count = app(ManageEmployee::class)->transfer($actor, $holder->employee, [
                 'department_id' => $dest['department'], 'home_location_id' => $dest['location'], 'reason' => 'Rotasi penempatan',
             ]);
@@ -88,7 +86,7 @@ class PeopleConcurrencyTest extends TestCase
 
             DB::beginTransaction();
             app(ManageEmployee::class)->update($actor, $second->employee, PeopleRaceWorker::inactiveProfile($second->employee));
-            $processes[] = $this->start('assign', $actor, $second->employee_id, $source['location']);
+            $processes[] = $this->start('assign', $registrar, $second->employee_id, $source['location'], $type->id);
             $this->waitForLocks([$processes[1]], 'select % from '.chr(96).'employees'.chr(96).'%for update');
             DB::commit();
             $this->assertSame('inactive_employee', $this->workerResult($processes[1]));
@@ -103,15 +101,46 @@ class PeopleConcurrencyTest extends TestCase
             }
         } finally {
             $this->finish($processes);
-            Schema::dropIfExists('asset_assignments');
-            Schema::dropIfExists('assets');
+            AssignmentFixture::clean($type);
             DB::table('employee_movements')->where('employee_id', $holder->employee_id)->delete();
-            $this->clean($source, [$actor, $holder, $second]);
+            $this->clean($source, [$actor, $registrar, $holder, $second]);
             $this->clean($dest, []);
         }
     }
 
-    private function start(string $operation, User $actor, int $employee, int $target): Process
+    public function test_t001_parallel_registration_uses_unique_codes_and_one_assignment_per_asset(): void
+    {
+        $tree = Fixture::tree();
+        $type = AssignmentFixture::type();
+        $actors = [
+            Fixture::actor($tree)->assignRole(IdentityAccess::SUPER_ADMIN),
+            Fixture::actor($tree)->assignRole(IdentityAccess::SUPER_ADMIN),
+        ];
+        $processes = [];
+        try {
+            DB::beginTransaction();
+            $number = DB::table('asset_number_sequences')->where('key', 'AST')->lockForUpdate()->sole()->next_number;
+            foreach ($actors as $actor) {
+                $processes[] = $this->start('assign', $actor, $actor->employee_id, $tree['location'], $type->id);
+            }
+            $this->waitForLocks($processes, 'select % from '.chr(96).'asset_number_sequences'.chr(96).'%for update');
+            DB::commit();
+            foreach ($processes as $process) {
+                $this->assertSame('saved', $this->workerResult($process));
+            }
+            $assets = DB::table('assets')->where('asset_type_id', $type->id)->orderBy('id')->get(['id', 'asset_code', 'public_token']);
+            $this->assertSame([sprintf('AST-%06d', $number), sprintf('AST-%06d', $number + 1)], $assets->pluck('asset_code')->all());
+            $this->assertCount(2, $assets->pluck('public_token')->unique());
+            $this->assertEqualsCanonicalizing($assets->pluck('id')->all(), DB::table('asset_assignments')
+                ->whereIn('asset_id', $assets->pluck('id'))->whereNull('ended_at')->pluck('active_asset_id')->all());
+        } finally {
+            $this->finish($processes);
+            AssignmentFixture::clean($type);
+            $this->clean($tree, $actors);
+        }
+    }
+
+    private function start(string $operation, User $actor, int $employee, int $target, int $typeId = 0): Process
     {
         $mysql = config('database.connections.mysql');
         $env = [
@@ -120,7 +149,7 @@ class PeopleConcurrencyTest extends TestCase
             'DB_USERNAME' => $mysql['username'], 'DB_PASSWORD' => (string) $mysql['password'], 'CACHE_STORE' => 'array',
         ];
         $script = 'require "vendor/autoload.php"; Tests\Support\PeopleRaceWorker::run(...array_slice($argv, 1));';
-        $process = new Process([PHP_BINARY, '-r', $script, $operation, (string) $actor->id, (string) $employee, (string) $target], base_path(), $env, timeout: 15);
+        $process = new Process([PHP_BINARY, '-r', $script, $operation, (string) $actor->id, (string) $employee, (string) $target, (string) $typeId], base_path(), $env, timeout: 15);
         $process->start();
 
         return $process;

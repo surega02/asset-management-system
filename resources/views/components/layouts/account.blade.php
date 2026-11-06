@@ -5,6 +5,10 @@
         <nav aria-label="{{ __('iam.account_navigation') }}" class="flex flex-wrap items-center gap-2">
             <a class="nav-link" href="{{ route('workspace') }}">{{ __('iam.workspace') }}</a>
             <a class="nav-link" href="{{ route('security.show') }}">{{ __('iam.security') }}</a>
+            @can('viewAny', \App\Models\Asset::class)
+                <a @class(['nav-link', 'nav-link-current' => request()->routeIs('assets.*')]) href="{{ route('assets.index') }}"
+                    @if(request()->routeIs('assets.*')) aria-current="true" @endif>{{ __('assets.title') }}</a>
+            @endcan
             @can('viewAny', \App\Models\User::class)
                 <a class="nav-link" href="{{ route('accounts.index') }}">{{ __('iam.accounts') }}</a>
             @endcan

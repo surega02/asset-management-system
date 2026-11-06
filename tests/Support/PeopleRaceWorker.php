@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 final class PeopleRaceWorker
 {
-    public static function run(string $operation, int $actorId, int $employeeId, int $target): void
+    public static function run(string $operation, int $actorId, int $employeeId, int $target, int $typeId): void
     {
         $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
         $app->make(Kernel::class)->bootstrap();
@@ -28,7 +28,7 @@ final class PeopleRaceWorker
                     'appointment_kind' => 'acting', 'starts_on' => '2026-05-01', 'ends_on' => '2026-05-31',
                 ]),
                 'deactivate' => $app->make(ManageEmployee::class)->update($actor, $employee, self::inactiveProfile($employee)),
-                'assign' => AssignmentFixture::assign($employeeId, $target),
+                'assign' => AssignmentFixture::assign($actor, $employeeId, $target, $typeId),
             };
             echo 'saved';
         } catch (ValidationException $exception) {
