@@ -3,6 +3,12 @@
 $identity = require __DIR__.'/iam.php';
 
 return [
+    'date_format' => 'Use :format format for :attribute.',
+    'after_or_equal' => ':attribute must be on or after :date.',
+    'before_or_equal' => ':attribute must be on or before :date.',
+    'not_in' => 'The selected :attribute is unavailable.',
+    'missing' => ':attribute cannot be changed in this form.',
+    'file' => 'Upload a valid file.',
     'required' => 'Enter :attribute.',
     'string' => 'The :attribute field must be text.',
     'array' => 'The :attribute field must be a list.',

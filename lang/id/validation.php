@@ -3,6 +3,12 @@
 $identity = require __DIR__.'/iam.php';
 
 return [
+    'date_format' => 'Gunakan format :format untuk :attribute.',
+    'after_or_equal' => ':attribute harus pada atau setelah :date.',
+    'before_or_equal' => ':attribute harus pada atau sebelum :date.',
+    'not_in' => 'Pilihan :attribute tidak tersedia.',
+    'missing' => 'Kolom :attribute tidak dapat diubah pada form ini.',
+    'file' => 'Unggah berkas yang valid.',
     'required' => 'Kolom :attribute wajib diisi.',
     'string' => 'Kolom :attribute harus berupa teks.',
     'array' => 'Kolom :attribute harus berupa daftar.',

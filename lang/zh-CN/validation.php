@@ -3,6 +3,12 @@
 $identity = require __DIR__.'/iam.php';
 
 return [
+    'date_format' => '请使用 :format 格式填写 :attribute。',
+    'after_or_equal' => ':attribute 必须在 :date 当日或之后。',
+    'before_or_equal' => ':attribute 必须在 :date 当日或之前。',
+    'not_in' => '所选 :attribute 不可用。',
+    'missing' => '无法在此表单中更改 :attribute。',
+    'file' => '请上传有效文件。',
     'required' => '请填写:attribute。',
     'string' => ':attribute必须为文本。',
     'array' => ':attribute必须为列表。',
