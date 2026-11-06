@@ -23,3 +23,13 @@ Issue [#13](https://github.com/surega02/asset-management-system/issues/13). Buka
 M07 memakai tabel M06. Jalankan `php artisan db:seed --class=IdentitySeeder --force` untuk menambahkan izin. Beri izin yang sesuai kepada peran operasional. Rollback kode mempertahankan riwayat di tabel M06.
 
 Jalankan `php vendor/bin/phpunit --filter 'AssetTrackingTest|PeopleConcurrencyTest'` dengan `AMS_TEST_MYSQL=1` pada skema uji berakhiran `_test`. Tes paralel memeriksa `information_schema.PROCESSLIST` untuk memastikan proses menunggu lock sebelum transaksi pertama dilepas.
+
+### Bukti pengujian
+
+Tiga tes fitur lulus dengan 75 asersi dan dua tes paralel lulus dengan 22 asersi di MySQL 8.0.30 lokal. Suite penuh lokal terhenti saat autoloader salinan runtime tidak tersedia. GitHub Actions menjalankan suite penuh pada MySQL 8.4 dan lulus dengan 48 tes serta 835 asersi. Migrasi, Pint, dan build Tailwind lulus. [CI implementasi](https://github.com/surega02/asset-management-system/actions/runs/42237780902)
+
+UAT memakai data sintetis. Penggantian penanggung jawab mempertahankan lokasi fisik Jakarta. Perpindahan Jakarta ke Bandung mempertahankan penugasan dan menampilkan histori asal, tujuan, aktor, serta alasan. Pemeriksaan mencakup fokus keyboard, desktop terang, ponsel gelap 390 px, dan locale Indonesia, Inggris, serta Mandarin. Detektor Impeccable melaporkan nol temuan pada Blade aset.
+
+- [Pergantian penanggung jawab di desktop](evidence/m07/assignment-desktop.png)
+- [Perpindahan fisik lintas cabang di ponsel](evidence/m07/move-mobile.png)
+- [Histori pelacakan dalam bahasa Mandarin](evidence/m07/tracking-mobile-zh.png)
