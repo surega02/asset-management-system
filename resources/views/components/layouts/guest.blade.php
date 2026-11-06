@@ -1,4 +1,6 @@
-<x-layouts.app :title="__('foundation.title')">
+@props(['title' => __('foundation.title')])
+
+<x-layouts.app :title="$title">
     <a href="#main-content" class="skip-link">{{ __('dashboard.skip') }}</a>
     <header class="topbar flex-wrap py-2">
         <a href="{{ route('home') }}" class="brand !m-0 !p-0" aria-label="AMS">

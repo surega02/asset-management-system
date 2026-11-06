@@ -57,5 +57,5 @@ jobs:
         env:
           DB_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
-          php artisan migrate --force
+          php artisan migrate --seed --force
           php vendor/bin/phpunit

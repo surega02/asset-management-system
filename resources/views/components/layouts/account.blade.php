@@ -1,0 +1,23 @@
+@props(['title'])
+
+<x-layouts.guest :title="$title">
+    <div class="grid gap-5">
+        <nav aria-label="{{ __('iam.account_navigation') }}" class="flex flex-wrap items-center gap-2">
+            <a class="nav-link" href="{{ route('workspace') }}">{{ __('iam.workspace') }}</a>
+            <a class="nav-link" href="{{ route('security.show') }}">{{ __('iam.security') }}</a>
+            @can('viewAny', \App\Models\User::class)
+                <a class="nav-link" href="{{ route('accounts.index') }}">{{ __('iam.accounts') }}</a>
+            @endcan
+            @can('manage-access-catalog')
+                <a class="nav-link" href="{{ route('catalog.index') }}">{{ __('iam.catalog') }}</a>
+            @endcan
+            <form method="post" action="{{ route('logout') }}" class="sm:ms-auto">
+                @csrf
+                <x-ui.button type="submit">{{ __('iam.logout') }}</x-ui.button>
+            </form>
+        </nav>
+        <h1>{{ $title }}</h1>
+        <x-ui.feedback />
+        {{ $slot }}
+    </div>
+</x-layouts.guest>

@@ -21,11 +21,40 @@
             <x-ui.button type="submit">{{ __('dashboard.apply_locale') }}</x-ui.button>
         </form>
     @endif
-    <x-ui.button class="icon-button" aria-label="{{ __('dashboard.theme') }}"
-        x-data="{ dark: document.documentElement.dataset.theme === 'dark' }"
-        x-bind:aria-pressed="dark"
-        @click="dark = !dark; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; try { localStorage.setItem('ams-preview-theme', dark ? 'dark' : 'light') } catch {}">
-        <x-ui.icon name="sun" class="theme-sun" />
-        <x-ui.icon name="moon" class="theme-moon" />
-    </x-ui.button>
+    <div x-data="{ dark: document.documentElement.dataset.theme === 'dark', saving: false, failed: false }"
+        data-theme-url="{{ auth()->check() ? route('preferences.theme') : '' }}">
+        <x-ui.button class="icon-button" aria-label="{{ __('dashboard.theme') }}"
+            x-bind:aria-pressed="dark" x-bind:disabled="saving"
+            @click="
+                const next = dark ? 'light' : 'dark';
+                failed = false;
+                saving = true;
+                try {
+                    if ($root.dataset.themeUrl) {
+                        const result = await fetch($root.dataset.themeUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                            },
+                            body: JSON.stringify({ theme: next })
+                        });
+                        if (result.status !== 204) throw new Error();
+                    } else {
+                        localStorage.setItem('ams-preview-theme', next);
+                    }
+                    dark = !dark;
+                    document.documentElement.dataset.theme = next;
+                } catch {
+                    failed = true;
+                } finally {
+                    saving = false;
+                }
+            ">
+            <x-ui.icon name="sun" class="theme-sun" />
+            <x-ui.icon name="moon" class="theme-moon" />
+        </x-ui.button>
+        <span x-cloak x-show="failed" role="status" class="block text-sm">{{ __('iam.theme_failed') }}</span>
+    </div>
 </div>
