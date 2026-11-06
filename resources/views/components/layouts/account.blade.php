@@ -24,6 +24,10 @@
                 <a @class(['nav-link', 'nav-link-current' => request()->routeIs('appointments.*')]) href="{{ route('appointments.index') }}"
                     @if(request()->routeIs('appointments.*')) aria-current="true" @endif>{{ __('people.appointments') }}</a>
             @endcan
+            @can('viewAny', \App\Models\AssetCategory::class)
+                <a @class(['nav-link', 'nav-link-current' => request()->routeIs('asset-catalog.*', 'asset-attributes.*')]) href="{{ route('asset-catalog.index', \App\Support\AssetMasterType::Category) }}"
+                    @if(request()->routeIs('asset-catalog.*', 'asset-attributes.*')) aria-current="true" @endif>{{ __('asset_catalog.title') }}</a>
+            @endcan
             <form method="post" action="{{ route('logout') }}" class="sm:ms-auto">
                 @csrf
                 <x-ui.button type="submit">{{ __('iam.logout') }}</x-ui.button>

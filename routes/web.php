@@ -19,6 +19,7 @@ Route::post('/language', function (Request $request): RedirectResponse {
 require __DIR__.'/identity.php';
 require __DIR__.'/organization.php';
 require __DIR__.'/people.php';
+require __DIR__.'/asset-catalog.php';
 
 Schedule::call(fn () => DB::table('employee_imports')->where('created_at', '<', now()->subDays(90))->delete())
     ->name('prune-employee-imports')->daily();
