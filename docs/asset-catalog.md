@@ -26,3 +26,13 @@ Issue [#9](https://github.com/surega02/asset-management-system/issues/9). Buka *
 Jalankan `php artisan migrate --seed --force` untuk membuat katalog, default awal, dan izin. Migrasi mengisi default awal sekali. Seeder identitas dapat dijalankan kembali tanpa mengganti default. Untuk rollback aplikasi, gunakan versi kode sebelumnya dan simpan tabel katalog agar histori tetap tersedia.
 
 Jalankan `php vendor/bin/phpunit --filter 'AssetCatalogTest|AssetCatalogIntegrityTest'` dengan `AMS_TEST_MYSQL=1` pada skema uji MySQL berakhiran `_test`. Jalankan suite penuh dengan `php vendor/bin/phpunit`, Pint dengan `php vendor/bin/pint --test`, dan build dengan `npm run build`.
+
+### Bukti pengujian
+
+MySQL 8.0.30 lokal lulus untuk enam tes M05 dengan 103 asersi, termasuk dua proses yang menunggu lock katalog dan uji FK untuk nilai lama. Pada suite penuh lokal, proses tes lama M03/M04 kehilangan akses ke autoloader salinan runtime. GitHub Actions menjalankan suite penuh di MySQL 8.4 dengan hasil 36 tes dan 636 asersi. Migrasi, Pint, dan build Tailwind lulus. [CI implementasi](https://github.com/surega02/asset-management-system/actions/runs/42231446640)
+
+UAT memakai data sintetis. Browser menampilkan penolakan siklus kategori dan arsip default, versi atribut aktif dan arsip, serta fokus keyboard. Pemeriksaan mencakup desktop terang, ponsel gelap 390 px, dan locale Indonesia, Inggris, serta Mandarin. Detektor Impeccable melaporkan nol temuan pada Blade katalog.
+
+- [Penolakan siklus kategori di desktop](evidence/m05/category-cycle-desktop.png)
+- [Versi atribut di ponsel](evidence/m05/attribute-versions-mobile.png)
+- [Kondisi default dalam bahasa Mandarin di ponsel](evidence/m05/default-condition-mobile-zh.png)
