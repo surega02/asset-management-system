@@ -1,0 +1,14 @@
+# M08 — QR aset dan cetak label
+
+- **QR-001 / T-011:** QR mengarah ke `/q/{token}`. Halaman publik hanya mengambil kode, nama, kategori, dan status umum. Aset nonaktif ditampilkan sebagai nonaktif. Token yang dibuat saat registrasi tetap sama setelah deaktivasi dan reaktivasi.
+- **IAM-003:** tombol detail mengharuskan login. Detail dan riwayat mengikuti Policy aset dan cakupan baca saat ini, termasuk pengecualian baca bagi pemegang langsung. Pencarian manual mengikuti aturan yang sama; kode yang tidak ada dan kode di luar cakupan memberi pesan yang sama.
+- **QR-002:** dari detail aset gunakan **Cetak label** untuk satu unit, atau dari daftar aset pilih beberapa unit pada satu halaman hasil. Pilih 60 × 36, 80 × 45, atau 100 × 60 mm. Kode dan QR selalu disertakan; nama, kategori, dan status bersifat opsional. Cakupan cetak mengikuti lokasi fisik dan memerlukan izin `assets.print-label` serta izin baca. Pratinjau hanya tersedia bagi pemohon dan gagal seluruhnya jika satu unit keluar dari cakupan. Status pekerjaan `prepared` berarti label siap dicetak.
+- **I18N-001:** pemindai `/scan` memproses video di browser setelah pengguna mengaktifkan kamera. Jika kamera tidak tersedia, cari kode yang tercetak pada label. Pilihan bahasa mengikuti preferensi AMS. Pratinjau memakai satu label per halaman cetak; pilih ukuran kertas yang sama, gunakan skala 100%, dan nonaktifkan header/footer dari dialog cetak bila tersedia.
+
+Saat rilis, jalankan `php artisan migrate --seed --force` untuk membuat tiga tabel cetak, memasang preset, dan mendaftarkan izin. Berikan izin cetak kepada petugas yang berwenang melalui pengelolaan peran/izin yang sudah ada. Jalankan `npm ci` dan `npm run build` untuk menyiapkan aset lokal pemindai. Gunakan `APP_URL` HTTPS dengan alamat publik AMS yang kanonis; alamat tersebut tertanam di label dan HTTPS diperlukan agar browser dapat mengakses kamera.
+
+Jika aplikasi perlu dikembalikan ke versi sebelumnya, deploy kode lama dan biarkan tabel tambahan tetap tersedia agar riwayat persiapan cetak tersimpan. Rollback migrasi menghapus tiga tabel cetak dan datanya; lakukan hanya jika data tersebut sudah dicadangkan dan penghapusan disetujui.
+
+Verifikasi otomatis: `php vendor/bin/phpunit --filter AssetQrLabelTest` pada MySQL dengan `AMS_TEST_MYSQL=1` dan `npm run test:scanner`.
+
+Uji browser dengan data sintetis: [pemindai ponsel 390 px, tema gelap](evidence/m08/scanner-mobile-dark.jpg), [hasil QR publik, tema terang](evidence/m08/public-qr-mobile-light.jpg), dan [pratinjau dua label ukuran 60 × 36 mm dalam bahasa Tionghoa](evidence/m08/bulk-label-preview-zh-cn.jpg). Kedua QR pada tangkapan layar berhasil didekode ke URL aset masing-masing. Pencarian manual melewati login dan membuka detail yang diminta. Label diperiksa di browser dalam bahasa Indonesia, Inggris, dan Tionghoa. Penolakan izin kamera diuji otomatis; pemindaian dari kamera fisik dan hasil printer belum diperiksa.

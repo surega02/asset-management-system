@@ -39,6 +39,16 @@ final class AssetPolicy
         return $this->canOperate($actor, $asset, Assets::REASSIGN);
     }
 
+    public function printAny(User $actor): bool
+    {
+        return $this->viewAny($actor) && Assets::locations($actor, Assets::PRINT_LABEL)->exists();
+    }
+
+    public function printLabel(User $actor, Asset $asset): bool
+    {
+        return $this->canOperate($actor, $asset, Assets::PRINT_LABEL);
+    }
+
     public function move(User $actor, Asset $asset, ?int $destination = null): bool
     {
         return $this->canOperate($actor, $asset, Assets::MOVE)

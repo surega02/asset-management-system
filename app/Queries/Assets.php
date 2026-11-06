@@ -22,6 +22,8 @@ final class Assets
 
     public const MOVE = 'assets.move';
 
+    public const PRINT_LABEL = 'assets.print-label';
+
     public static function locations(User $actor, string $permission): Builder
     {
         $query = Location::query();
