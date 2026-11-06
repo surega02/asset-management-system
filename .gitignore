@@ -1,0 +1,7 @@
+/.env
+/vendor/
+/node_modules/
+/public/build/
+/.phpunit.result.cache
+/.impeccable/questions/
+/.impeccable/review/
