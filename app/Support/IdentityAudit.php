@@ -27,7 +27,7 @@ final class IdentityAudit
             return null;
         }
 
-        $keys = ['employee_id', 'is_active', 'has_email', 'role_ids', 'permission_ids', 'scope_ids', 'name', 'enabled', 'locale', 'theme'];
+        $keys = ['employee_id', 'is_active', 'has_email', 'role_ids', 'permission_ids', 'scope_ids', 'name', 'enabled', 'locale', 'theme', 'code', 'branch_id', 'division_id', 'parent_id'];
 
         return json_encode(array_intersect_key($values, array_flip($keys)), JSON_THROW_ON_ERROR);
     }

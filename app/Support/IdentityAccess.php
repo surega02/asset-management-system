@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Queries\OrganizationMasters;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -12,7 +13,7 @@ final class IdentityAccess
 
     public const ROLES = [self::SUPER_ADMIN, 'asset-admin', 'asset-officer', 'leader', 'employee'];
 
-    public const PERMISSIONS = ['users.view', 'users.manage', 'users.reset', 'users.access', 'roles.manage', 'settings.manage'];
+    public const PERMISSIONS = ['users.view', 'users.manage', 'users.reset', 'users.access', 'roles.manage', 'settings.manage', OrganizationMasters::VIEW, OrganizationMasters::MANAGE];
 
     public static function superAdminCan(User $user, string $permission): bool
     {
