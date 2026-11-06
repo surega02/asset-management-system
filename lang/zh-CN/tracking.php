@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => '分配和地点',
+    'back_asset' => '返回资产详情',
+    'independent' => '责任方和实际地点可分别更改。每次更改都需要填写原因。',
+    'assignment' => '责任方',
+    'current' => '当前',
+    'assignment_history' => '分配历史',
+    'location_history' => '实际地点历史',
+    'ongoing' => '仍有效',
+    'registration' => '资产注册',
+    'no_history' => '暂无历史。',
+    'change_assignment' => '更换责任方',
+    'save_assignment' => '保存新分配',
+    'move' => '移动实际地点',
+    'save_move' => '保存地点变更',
+    'destination' => '目标实际地点',
+    'no_destinations' => '您的权限范围内没有启用的目标地点。',
+    'inactive' => '请先重新启用资产，再更改责任方或实际地点。',
+    'stale_assignment' => '分配已更改。重新提交前请检查当前责任方。',
+    'stale_location' => '实际地点已更改。重新提交前请检查当前地点。',
+    'same_assignee' => '请选择不同的责任方。',
+    'same_location' => '请选择不同的实际地点。',
+    'assignment_saved' => '责任方已更新，实际地点保持不变。',
+    'move_saved' => '实际地点移动已记录，责任方保持不变。',
+];

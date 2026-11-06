@@ -66,7 +66,7 @@ final class AssetController
         Gate::authorize('create', Asset::class);
         $asset = $register($request->user(), $request->only('name', 'category_id', 'asset_type_id', 'physical_location_id', 'status_id', 'condition_id',
             'purchase_date', 'acquisition_cost', 'serial_number', 'invoice_number', 'brand_id', 'vendor_id', 'warranty_ends_on', 'attributes')
-            + $this->assignment($request), $request->only('photo', 'invoice'));
+            + AssetTargets::decodeSelection($request->input('assignee')), $request->only('photo', 'invoice'));
 
         return to_route('assets.show', $asset)->with('status', __('assets.registered', ['code' => $asset->asset_code]));
     }
@@ -106,7 +106,8 @@ final class AssetController
     public function reactivate(Request $request, Asset $asset, AssetLifecycle $lifecycle): RedirectResponse
     {
         Gate::authorize('lifecycle', $asset);
-        $lifecycle->reactivate($request->user(), $asset, $request->only('reason', 'status_id', 'condition_id') + $this->assignment($request));
+        $lifecycle->reactivate($request->user(), $asset,
+            $request->only('reason', 'status_id', 'condition_id') + AssetTargets::decodeSelection($request->input('assignee')));
 
         return to_route('assets.show', $asset)->with('status', __('assets.reactivated'));
     }
@@ -116,15 +117,6 @@ final class AssetController
         $lifecycle->updateState($request->user(), $asset, $request->only('reason', 'status_id', 'condition_id'));
 
         return to_route('assets.show', $asset)->with('status', __('masters.saved'));
-    }
-
-    private function assignment(Request $request): array
-    {
-        $target = $request->validate(['assignee' => ['required', 'string', 'regex:/\A(employee|department|location):[1-9][0-9]{0,18}\z/']],
-            attributes: ['assignee' => __('assets.assignee')])['assignee'];
-        [$kind, $id] = explode(':', $target);
-
-        return [$kind.'_id' => $id];
     }
 
     private function options(string $model): Collection

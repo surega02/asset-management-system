@@ -34,6 +34,17 @@ final class AssetPolicy
         return $this->canOperate($actor, $asset, Assets::UPDATE_STATE);
     }
 
+    public function reassign(User $actor, Asset $asset): bool
+    {
+        return $this->canOperate($actor, $asset, Assets::REASSIGN);
+    }
+
+    public function move(User $actor, Asset $asset, ?int $destination = null): bool
+    {
+        return $this->canOperate($actor, $asset, Assets::MOVE)
+            && ($destination === null || Assets::locations($actor, Assets::MOVE)->whereKey($destination)->exists());
+    }
+
     private function canOperate(User $actor, Asset $asset, string $permission): bool
     {
         return $this->viewAny($actor) && Assets::locations($actor, $permission)->whereKey($asset->physical_location_id)->exists();

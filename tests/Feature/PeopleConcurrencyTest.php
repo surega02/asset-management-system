@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Assets\ReassignAsset;
 use App\Actions\Employees\ManageEmployee;
+use App\Models\Asset;
 use App\Models\User;
+use App\Queries\Assets;
 use App\Support\IdentityAccess;
 use Database\Seeders\IdentitySeeder;
 use Illuminate\Foundation\Testing\TestCase;
@@ -137,6 +140,89 @@ class PeopleConcurrencyTest extends TestCase
             $this->finish($processes);
             AssignmentFixture::clean($type);
             $this->clean($tree, $actors);
+        }
+    }
+
+    public function test_t003_parallel_reassignments_close_only_one_old_assignment(): void
+    {
+        $tree = Fixture::tree();
+        $type = AssignmentFixture::type();
+        $owner = Fixture::actor($tree)->assignRole(IdentityAccess::SUPER_ADMIN);
+        $operators = [
+            Fixture::actor($tree, 'branch', [Assets::VIEW, Assets::REASSIGN]),
+            Fixture::actor($tree, 'branch', [Assets::VIEW, Assets::REASSIGN]),
+        ];
+        $asset = Asset::query()->findOrFail(AssignmentFixture::assign($owner, $owner->employee_id, $tree['location'], $type->id));
+        $original = $asset->activeAssignment()->sole();
+        $processes = [];
+        try {
+            DB::beginTransaction();
+            Asset::query()->lockForUpdate()->findOrFail($asset->id);
+            foreach ($operators as $operator) {
+                $processes[] = $this->start('reassign', $operator, $operator->employee_id, $asset->id, $original->id);
+            }
+            $this->waitForLocks($processes, 'select % from '.chr(96).'assets'.chr(96).'%for update');
+            DB::commit();
+
+            $this->assertEqualsCanonicalizing(['saved', 'stale_assignment'],
+                array_map(fn (Process $process) => $this->workerResult($process), $processes));
+            $this->assertSame(2, $asset->assignments()->count());
+            $this->assertEquals($original->fresh()->ended_at, $asset->activeAssignment()->sole()->started_at);
+            $this->assertSame(1, DB::table('audit_logs')->where('asset_id', $asset->id)->where('event', 'asset.reassigned')->count());
+        } finally {
+            $this->finish($processes);
+            AssignmentFixture::clean($type);
+            $this->clean($tree, [$owner, ...$operators]);
+        }
+    }
+
+    public function test_reassignment_rechecks_employee_scope_and_active_state_after_waiting_for_the_employee_lock(): void
+    {
+        $tree = Fixture::tree();
+        $other = Fixture::tree();
+        $type = AssignmentFixture::type();
+        $admin = Fixture::actor($tree)->assignRole(IdentityAccess::SUPER_ADMIN);
+        $operator = Fixture::actor($tree, 'branch', [Assets::VIEW, Assets::REASSIGN]);
+        $moved = Fixture::actor($tree);
+        $inactive = Fixture::actor($tree);
+        $holder = Fixture::actor($tree);
+        $asset = Asset::query()->findOrFail(AssignmentFixture::assign($admin, $admin->employee_id, $tree['location'], $type->id));
+        $original = $asset->activeAssignment()->sole();
+        $employeeLock = 'select % from '.chr(96).'employees'.chr(96).'%for update';
+        $processes = [];
+        try {
+            DB::beginTransaction();
+            app(ManageEmployee::class)->transfer($admin, $moved->employee, [
+                'department_id' => $other['department'], 'home_location_id' => $other['location'], 'reason' => 'Parallel transfer',
+            ]);
+            $processes[] = $this->start('reassign', $operator, $moved->employee_id, $asset->id, $original->id);
+            $this->waitForLocks([$processes[0]], $employeeLock);
+            DB::commit();
+            $this->assertSame('invalid_assignee', $this->workerResult($processes[0]));
+
+            DB::beginTransaction();
+            app(ManageEmployee::class)->update($admin, $inactive->employee, PeopleRaceWorker::inactiveProfile($inactive->employee));
+            $processes[] = $this->start('reassign', $operator, $inactive->employee_id, $asset->id, $original->id);
+            $this->waitForLocks([$processes[1]], $employeeLock);
+            DB::commit();
+            $this->assertSame('inactive_employee', $this->workerResult($processes[1]));
+            $this->assertSame($original->id, $asset->activeAssignment()->sole()->id);
+
+            DB::beginTransaction();
+            app(ReassignAsset::class)($operator, $asset, [
+                'employee_id' => $holder->employee_id, 'assignment_id' => $original->id, 'reason' => 'Parallel assignment',
+            ]);
+            $processes[] = $this->start('deactivate', $admin, $holder->employee_id, 0);
+            $this->waitForLocks([$processes[2]], $employeeLock);
+            DB::commit();
+            $this->assertSame('has_assets', $this->workerResult($processes[2]));
+            $this->assertSame($holder->employee_id, $asset->activeAssignment()->sole()->employee_id);
+        } finally {
+            $this->finish($processes);
+            AssignmentFixture::clean($type);
+            DB::table('employee_movements')->where('employee_id', $moved->employee_id)->delete();
+            $this->clean($tree, [$admin, $operator, $moved, $inactive, $holder]);
+            $this->clean($other, []);
         }
     }
 

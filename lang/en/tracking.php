@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'Assignments and location',
+    'back_asset' => 'Back to asset details',
+    'independent' => 'You can change the assignee and physical location separately. Each change requires a reason.',
+    'assignment' => 'Assignee',
+    'current' => 'Current',
+    'assignment_history' => 'Assignment history',
+    'location_history' => 'Physical location history',
+    'ongoing' => 'Ongoing',
+    'registration' => 'Asset registration',
+    'no_history' => 'No history yet.',
+    'change_assignment' => 'Change assignee',
+    'save_assignment' => 'Save new assignment',
+    'move' => 'Move physical location',
+    'save_move' => 'Save location change',
+    'destination' => 'Destination location',
+    'no_destinations' => 'There are no active destinations in your scope.',
+    'inactive' => 'Reactivate the asset before changing its assignee or physical location.',
+    'stale_assignment' => 'The assignment has changed. Check the current assignee before submitting again.',
+    'stale_location' => 'The physical location has changed. Check the current location before submitting again.',
+    'same_assignee' => 'Choose a different assignee.',
+    'same_location' => 'Choose a different physical location.',
+    'assignment_saved' => 'The assignee was updated. The physical location stayed the same.',
+    'move_saved' => 'The physical move was recorded. The assignee stayed the same.',
+];

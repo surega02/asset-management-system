@@ -18,6 +18,10 @@ final class Assets
 
     public const UPDATE_STATE = 'assets.update-state';
 
+    public const REASSIGN = 'assets.reassign';
+
+    public const MOVE = 'assets.move';
+
     public static function locations(User $actor, string $permission): Builder
     {
         $query = Location::query();
@@ -40,5 +44,11 @@ final class Assets
         return $query->where(fn (Builder $scope) => $scope
             ->whereIn('physical_location_id', self::locations($actor, self::VIEW)->select('id'))
             ->orWhereHas('activeAssignment', fn (Builder $assignment) => $assignment->where('employee_id', $actor->employee_id)));
+    }
+
+    /** Scope for operational reports and exports. Personal access is read-only on the asset. */
+    public static function operational(User $actor, string $permission = self::VIEW): Builder
+    {
+        return Asset::query()->whereIn('physical_location_id', self::locations($actor, $permission)->select('id'));
     }
 }

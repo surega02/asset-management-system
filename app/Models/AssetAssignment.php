@@ -30,6 +30,11 @@ final class AssetAssignment extends Model
         return $this->belongsTo(Location::class);
     }
 
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function assigneeName(): string
     {
         return $this->employee?->name ?? $this->department?->name ?? $this->location->name;

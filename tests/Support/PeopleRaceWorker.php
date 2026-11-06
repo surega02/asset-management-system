@@ -2,8 +2,10 @@
 
 namespace Tests\Support;
 
+use App\Actions\Assets\ReassignAsset;
 use App\Actions\Employees\ManageEmployee;
 use App\Actions\Organization\AssignStructuralOfficer;
+use App\Models\Asset;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
@@ -29,9 +31,26 @@ final class PeopleRaceWorker
                 ]),
                 'deactivate' => $app->make(ManageEmployee::class)->update($actor, $employee, self::inactiveProfile($employee)),
                 'assign' => AssignmentFixture::assign($actor, $employeeId, $target, $typeId),
+                'reassign' => $app->make(ReassignAsset::class)($actor, Asset::query()->findOrFail($target), [
+                    'employee_id' => $employeeId, 'assignment_id' => $typeId, 'reason' => 'Parallel reassignment',
+                ]),
             };
             echo 'saved';
         } catch (ValidationException $exception) {
+            if ($operation === 'reassign') {
+                foreach ([
+                    'stale_assignment' => ['assignment_id', 'tracking.stale_assignment'],
+                    'inactive_employee' => ['employee_id', 'people.inactive_employee'],
+                    'invalid_assignee' => ['assignee', 'assets.invalid_assignee'],
+                ] as $result => [$field, $message]) {
+                    if (($exception->errors()[$field][0] ?? null) === __($message)) {
+                        echo $result;
+
+                        return;
+                    }
+                }
+                throw $exception;
+            }
             $expected = match ($operation) {
                 'appointment' => ['starts_on', 'overlap'],
                 'deactivate' => ['employment_status', 'has_assets'],

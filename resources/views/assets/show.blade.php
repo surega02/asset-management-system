@@ -8,6 +8,7 @@
 <x-layouts.account :title="$asset->name">
     <div class="flex flex-wrap items-center gap-3">
         <a class="nav-link" href="{{ route('assets.index') }}">{{ __('assets.back') }}</a>
+        <a class="nav-link" href="{{ route('assets.tracking', $asset) }}">{{ __('tracking.title') }}</a>
         <strong>{{ $asset->asset_code }} · {{ __('assets.'.($asset->is_active ? 'active' : 'inactive')) }}</strong>
     </div>
     <dl class="grid gap-x-6 gap-y-3 border-y border-[var(--border)] py-4 sm:grid-cols-2 lg:grid-cols-3">

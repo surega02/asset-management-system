@@ -1,4 +1,4 @@
-<x-ui.select-field name="assignee" :label="__('assets.assignee')" :help="__('assets.assignee_help')" required>
+<x-ui.select-field name="assignee" :bag="$assigneeBag ?? 'default'" :label="__('assets.assignee')" :help="__('assets.assignee_help')" required>
     <option value="">{{ __('people.choose') }}</option>
     @foreach($targets as $kind => $options)
         @if($options->isNotEmpty())
