@@ -59,17 +59,17 @@ done
 test "$state" = 'true 1'
 "${compose[@]}" exec -T web nginx -t
 for attempt in {1..30}; do
-  if curl --fail --silent http://127.0.0.1:18080/up >/dev/null; then break; fi
+  if curl --max-time 10 --fail --silent http://127.0.0.1:18080/up >/dev/null; then break; fi
   sleep 2
 done
-curl --fail --silent http://127.0.0.1:18080/up >/dev/null
-curl --fail --silent http://127.0.0.1:18080/login | grep -q 'csrf-token'
-curl --fail --silent --header 'X-Forwarded-Proto: https' http://127.0.0.1:18080/login | grep -q 'action="https://'
-curl --fail --silent http://127.0.0.1:18080/build/app.css >/dev/null
+curl --max-time 10 --fail --silent http://127.0.0.1:18080/up >/dev/null
+curl --max-time 10 --fail --silent http://127.0.0.1:18080/login | grep -q 'csrf-token'
+curl --max-time 10 --fail --silent --header 'X-Forwarded-Proto: https' http://127.0.0.1:18080/login | grep -q 'action="https://'
+curl --max-time 10 --fail --silent http://127.0.0.1:18080/build/app.css >/dev/null
 for path in /.env /index.php /storage/app/private/test; do
-  test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:18080$path")" = 404
+  test "$(curl --max-time 10 --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:18080$path")" = 404
 done
-test "$(curl --silent --output /dev/null --write-out '%{http_code}' --request POST \
+test "$(curl --max-time 10 --silent --output /dev/null --write-out '%{http_code}' --request POST \
   --header 'Origin: https://foreign.example' --data 'login=unknown&password=invalid' \
   http://127.0.0.1:18080/login)" = 419
 
@@ -154,20 +154,21 @@ YAML
 docker run --rm --user root -v "$AMS_RESTORE_STORAGE/private:/restored" "ams-php:$AMS_IMAGE_TAG" chown -R www-data:www-data /restored
 restored=("${compose[@]}" -f "$work/restored.yaml")
 "${restored[@]}" up -d --no-deps --force-recreate php
+"${restored[@]}" exec -T web nginx -s reload
 for attempt in {1..30}; do
-  if curl --fail --silent http://127.0.0.1:18080/up >/dev/null; then break; fi
+  if curl --max-time 10 --fail --silent http://127.0.0.1:18080/up >/dev/null; then break; fi
   sleep 1
 done
-curl --fail --silent --cookie-jar "$work/cookies" http://127.0.0.1:18080/login >"$work/login.html"
+curl --max-time 10 --fail --silent --cookie-jar "$work/cookies" http://127.0.0.1:18080/login >"$work/login.html"
 token=$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' "$work/login.html")
 test -n "$token"
-test "$(curl --silent --cookie "$work/cookies" --cookie-jar "$work/cookies" --output /dev/null --write-out '%{http_code}' \
+test "$(curl --max-time 10 --silent --cookie "$work/cookies" --cookie-jar "$work/cookies" --output /dev/null --write-out '%{http_code}' \
   --data-urlencode "_token=$token" --data 'login=DRILL&password=synthetic-release-only-password' \
   http://127.0.0.1:18080/login)" = 302
-curl --fail --silent --cookie "$work/cookies" http://127.0.0.1:18080/assets/1 >"$work/asset.html"
+curl --max-time 10 --fail --silent --cookie "$work/cookies" http://127.0.0.1:18080/assets/1 >"$work/asset.html"
 grep -q '&lt;img src=x onerror=alert(1)&gt;' "$work/asset.html"
 if grep -q '<img src=x onerror=alert(1)>' "$work/asset.html"; then exit 1; fi
-curl --fail --silent --cookie "$work/cookies" http://127.0.0.1:18080/assets/1/attachments/1 >"$work/downloaded.jpg"
+curl --max-time 10 --fail --silent --cookie "$work/cookies" http://127.0.0.1:18080/assets/1/attachments/1 >"$work/downloaded.jpg"
 photo=$(mysql --defaults-extra-file="$MYSQL_DEFAULTS" -N ams_release_restore -e 'SELECT storage_path FROM asset_attachments WHERE id=1')
 cmp "$work/storage/app/private/assets/$photo" "$work/downloaded.jpg"
 printf 'release_drill=passed\n'
