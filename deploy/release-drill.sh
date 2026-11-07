@@ -40,8 +40,11 @@ SESSION_DRIVER=file
 SESSION_SECURE_COOKIE=false
 CACHE_STORE=file
 QUEUE_CONNECTION=database
+LOG_CHANNEL=stderr
 ENV
 "${compose[@]}" up -d --wait db
+gateway=$(docker network inspect ams-release-drill_default --format '{{(index .IPAM.Config 0).Gateway}}')
+printf 'AMS_TRUSTED_PROXIES=%s\n' "$gateway" >>"$AMS_ENV_FILE"
 "${compose[@]}" build php web
 "${compose[@]}" run --rm php php artisan migrate --seed --force
 "${compose[@]}" up -d php web worker scheduler
@@ -52,6 +55,7 @@ for attempt in {1..30}; do
 done
 curl --fail --silent http://127.0.0.1:18080/up >/dev/null
 curl --fail --silent http://127.0.0.1:18080/login | grep -q 'csrf-token'
+curl --fail --silent --header 'X-Forwarded-Proto: https' http://127.0.0.1:18080/login | grep -q 'action="https://'
 curl --fail --silent http://127.0.0.1:18080/build/app.css >/dev/null
 for path in /.env /index.php /storage/app/private/test; do
   test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:18080$path")" = 404
