@@ -4,7 +4,7 @@ Status kandidat **In Review**. Referensi OPS-001, IAM-001/002/003, I18N-001 dan 
 
 ## Quality gate
 
-CI `verify` menggunakan PHP 8.3 dan MySQL 8.4 nyata, migrasi dari database kosong, seluruh Feature tests, Pint, frontend build dan pengujian scanner. `ReleaseLoadTest` dijalankan terpisah pada database sintetis dengan akhiran `_test`, dalam transaksi yang dibatalkan setelah pengukuran. Data awal 8.000 unit pada dua cabang, ditambah 1.000 unit melalui parser dan worker impor yang sebenarnya. Kode dan assignment tiap unit tetap unik. Tiga sampel request hangat mencatat median/maksimum waktu serta jumlah query dashboard, daftar dan laporan. EXPLAIN mencatat pilihan indeks optimizer. Angka ini menggambarkan satu runner CI dan bukan kapasitas server produksi.
+CI `verify` menggunakan PHP 8.3 dan MySQL 8.4 nyata, migrasi dari database kosong, seluruh Feature tests, Pint, frontend build dan pengujian scanner. `ReleaseLoadTest` dijalankan terpisah pada database sintetis dengan akhiran `_test`, dalam transaksi yang dibatalkan setelah pengukuran. Data awal 8.000 unit dan 8.000 audit pada dua cabang, dua kategori/jenis, variasi status/kondisi, serta assignment pegawai/departemen/lokasi. Impor melalui parser dan worker yang sebenarnya menambah 1.000 unit. Kode dan assignment tiap unit tetap unik. Tiga sampel request hangat mencatat median/maksimum waktu serta jumlah query dashboard, daftar dan laporan. EXPLAIN mencatat pilihan indeks optimizer. Angka ini menggambarkan satu runner CI dan bukan kapasitas server produksi.
 
 | Skenario baseline | Bukti otomatis |
 |---|---|
@@ -18,7 +18,23 @@ CI `verify` menggunakan PHP 8.3 dan MySQL 8.4 nyata, migrasi dari database koson
 | T-012, T-013 | AssetReportTest |
 | T-014 | IdentityTest |
 
-Nama file dan hasil aktual harus dicocokkan dengan log CI sebelum sign-off. Test konkurensi menjalankan proses terpisah pada MySQL, termasuk request serentak, pengiriman job ganda, lease kedaluwarsa dan pencabutan scope. Transaksi aplikasi menggunakan bounded retry tiga kali. Log pengujian harus membedakan penolakan domain yang benar dari kegagalan infrastruktur.
+Test konkurensi menjalankan proses terpisah pada MySQL, termasuk request serentak, pengiriman job ganda, lease kedaluwarsa dan pencabutan scope. `DeadlockRetryTest` memaksa siklus lock InnoDB dengan proses kedua, lalu memverifikasi registrasi mencoba ulang tepat sekali, satu kode, satu assignment aktif dan satu audit. Transaksi aplikasi menggunakan bounded retry tiga kali.
+
+### Bukti pengukuran 7 November 2026
+
+`php artisan migrate --seed --force`, `php vendor/bin/phpunit`, `php vendor/bin/phpunit tests/Release`, `php vendor/bin/pint --test`, `npm run build` dan `npm run test:scanner` lulus. Regresi mencakup 67 tes/1.281 assertion. Dua tes rilis mencakup 49 assertion, termasuk deadlock nyata dan 1.000 baris impor sukses dalam 31,32 detik. EXPLAIN menggunakan indeks lokasi fisik aset dan unique active assignment. [Log CI e1a333e](https://github.com/surega02/asset-management-system/actions/runs/42360035290)
+
+| Halaman | Median ms | Maksimum ms | Query |
+|---|---|---|---|
+| Dashboard | 176,91 | 177,35 | 9 |
+| Daftar aset | 9,74 | 9,79 | 7 |
+| Laporan unit | 114,47 | 114,71 | 2 |
+| Rekap | 99,62 | 99,91 | 2 |
+| Laporan event | 63,87 | 64,24 | 2 |
+
+`bash deploy/release-drill.sh` lulus pada NGINX 1.28/PHP-FPM 8.4/MySQL 8.4. Pemeriksaan mencakup restart policy setelah interupsi proses worker, job yang menunggu worker, CSRF 419, trusted-proxy HTTPS, backup terenkripsi, retensi selektif 29/31 hari, penolakan passphrase salah, SQL dan byte seluruh file yang dipulihkan, serta penolakan restore ke target terpakai. Snapshot berusia 2 detik dan restore SQL/file berlangsung 1 detik dalam fixture kecil. Aplikasi kemudian dijalankan dari database/private files hasil restore. Login memberikan 302, detail aset dan foto terotorisasi memberikan 200, foto identik dengan backup dan nama HTML ter-escape. Angka tersebut tidak mengukur pemulihan infrastruktur produksi. [Log drill bfa977f](https://github.com/surega02/asset-management-system/actions/runs/42359946298)
+
+Audit sumber awal menemukan dua risiko berkeparahan sedang, berupa ekspansi spreadsheet sebelum validasi dan kardinalitas file limiter dari identifier login acak. Perbaikan ada di `ReadSpreadsheet` dan `IdentityAttempts`, dengan regresi `SpreadsheetResourceTest` serta `IdentityTest`. Review terfokus tidak menemukan celah high yang terkonfirmasi. Cakupan menyeluruh deployment, klien spreadsheet, kamera nyata dan penerimaan pengguna tetap menunggu verifikasi staging/UAT.
 
 ## Keamanan
 
@@ -38,7 +54,7 @@ CSV ditujukan untuk delimiter koma. Pembukaan dengan delimiter lain memerlukan p
 2. Simpan env di luar checkout, mode 0600. Isi `APP_ENV=production`, `APP_DEBUG=false`, APP_KEY baru dari secret manager, APP_URL HTTPS, kredensial database terbatas, session file, cache file dan database queue. `SESSION_SECURE_COOKIE=true`. Simpan APP_KEY secara aman untuk dekripsi 2FA dan queue. Set `DB_QUEUE_RETRY_AFTER` lebih besar dari timeout worker 60 detik, default 90 detik. Jangan mengubah APP_KEY saat upgrade.
 3. Set `AMS_ENV_FILE` ke file env dan `AMS_IMAGE_TAG` ke commit yang ditinjau. Jalankan `docker compose build php web`. Simpan image immutable di registry privat atau backup artifact on-prem. Jalankan `docker compose run --rm php php artisan migrate --seed --force` sebelum menyalakan worker. Gunakan `php artisan ams:bootstrap-admin` sesuai dokumentasi identitas untuk akun admin pertama, melalui terminal terpercaya.
 4. Jalankan `docker compose up -d`. Periksa `/up`, login, label, lampiran privat, scheduler dan antrean. Periksa `docker compose exec web nginx -t` dan `docker compose exec php php artisan schedule:list`. Pantau failed jobs, outbox tertunda, lease impor, kapasitas disk, respons 5xx dan log. Jangan tampilkan bindings SQL atau konten unggahan dalam alarm. Set `LOG_CHANNEL=stderr` agar log aplikasi mengikuti rotasi container, maksimum tiga file 10 MiB per layanan. Forward log yang perlu disimpan ke kolektor operasi dan tetapkan retensinya sebelum go-live.
-5. Untuk upgrade, simpan backup terverifikasi, aktifkan maintenance dan hentikan worker/scheduler secara tertib. Jalankan migrasi kompatibel, perbarui image dan jalankan smoke test, kemudian buka akses. Proses antrean perlu image baru dan restart. Rollback kode menggunakan tag image sebelumnya apabila skema kompatibel. Jika perlu pemulihan data, gunakan restore terisolasi dan persetujuan pemilik data sebelum pergantian database/storage. Jangan menjalankan migrate rollback tanpa meninjau dampak data.
+5. Untuk upgrade, simpan backup terverifikasi, aktifkan maintenance dan hentikan worker/scheduler secara tertib. Jalankan migrasi kompatibel, perbarui image dan jalankan smoke test, kemudian buka akses. Setelah PHP direkreasi, jalankan `docker compose exec web nginx -s reload` agar alamat upstream diperbarui. Proses antrean perlu image baru dan restart. Rollback kode menggunakan tag image sebelumnya apabila skema kompatibel. Jika perlu pemulihan data, gunakan restore terisolasi dan persetujuan pemilik data sebelum pergantian database/storage. Atur kepemilikan file hasil restore sesuai UID/GID layanan PHP dan verifikasi izin aksesnya sebelum mengaktifkan aplikasi. Jangan menjalankan migrate rollback tanpa meninjau dampak data.
 
 ## Backup dan pemulihan
 

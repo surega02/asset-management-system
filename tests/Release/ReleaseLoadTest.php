@@ -43,6 +43,7 @@ class ReleaseLoadTest extends TestCase
         $defaults = DB::table('asset_catalog_defaults')->sole();
         $usedStatus = Fixture::insert('asset_statuses', 'RELEASE-USED', 'Synthetic in use');
         $wornCondition = Fixture::insert('asset_conditions', 'RELEASE-WORN', 'Synthetic worn');
+        $registeredAt = now()->subDays(1);
         $this->assertSame(0, DB::table('assets')->count(), 'Release probe requires an empty synthetic test database.');
         for ($start = 1; $start <= 8000; $start += 250) {
             $units = [];
@@ -54,7 +55,7 @@ class ReleaseLoadTest extends TestCase
                     'status_id' => $number % 3 ? $defaults->status_id : $usedStatus,
                     'condition_id' => $number % 5 ? $defaults->condition_id : $wornCondition,
                     'name' => 'Synthetic unit '.$number, 'purchase_date' => sprintf('2025-%02d-15', $number % 12 + 1), 'acquisition_cost' => '1250.00',
-                    'is_active' => true, 'registered_at' => now(), 'updated_at' => now(),
+                    'is_active' => true, 'registered_at' => $registeredAt, 'updated_at' => now(),
                 ];
             }
             DB::table('assets')->insert($units);
@@ -64,11 +65,11 @@ class ReleaseLoadTest extends TestCase
                 'employee_id' => $index % 3 === 0 ? $actor->employee_id : null,
                 'department_id' => $index % 3 === 1 ? $tree['department'] : null,
                 'location_id' => $index % 3 === 2 ? $unit->physical_location_id : null,
-                'started_at' => now(), 'actor_id' => $actor->id, 'reason' => 'Synthetic release probe',
+                'started_at' => $registeredAt, 'actor_id' => $actor->id, 'reason' => 'Synthetic release probe',
             ])->all());
             DB::table('asset_location_histories')->insert($ids->map(fn ($unit) => [
                 'asset_id' => $unit->id, 'to_location_id' => $unit->physical_location_id, 'actor_id' => $actor->id,
-                'reason' => 'Synthetic registration', 'changed_at' => now()->subDays(1),
+                'reason' => 'Synthetic registration', 'changed_at' => $registeredAt,
             ])->all());
             DB::table('audit_logs')->insert($ids->map(fn ($unit) => [
                 'asset_id' => $unit->id, 'actor_id' => $actor->id, 'subject_type' => Asset::class, 'subject_id' => $unit->id,
