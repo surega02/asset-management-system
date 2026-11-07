@@ -1,0 +1,37 @@
+services:
+  php:
+    build:
+      context: .
+      target: php
+    image: ams-php:${AMS_IMAGE_TAG:-local}
+    env_file: ${AMS_ENV_FILE:-.env}
+    volumes:
+      - storage:/var/www/html/storage
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      target: web
+    image: ams-web:${AMS_IMAGE_TAG:-local}
+    ports:
+      - "127.0.0.1:${AMS_HTTP_PORT:-8080}:8080"
+    depends_on:
+      - php
+    restart: unless-stopped
+  worker:
+    image: ams-php:${AMS_IMAGE_TAG:-local}
+    env_file: ${AMS_ENV_FILE:-.env}
+    command: ["php", "artisan", "queue:work", "database", "--sleep=2", "--timeout=60", "--tries=3", "--max-time=3600"]
+    stop_grace_period: 75s
+    volumes:
+      - storage:/var/www/html/storage
+    restart: unless-stopped
+  scheduler:
+    image: ams-php:${AMS_IMAGE_TAG:-local}
+    env_file: ${AMS_ENV_FILE:-.env}
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - storage:/var/www/html/storage
+    restart: unless-stopped
+volumes:
+  storage:

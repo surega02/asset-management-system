@@ -11,7 +11,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/new', [EmployeeController::class, 'create'])->name('create');
         Route::post('/', [EmployeeController::class, 'store'])->name('store');
         Route::get('/import', [EmployeeImportController::class, 'create'])->name('import.create');
-        Route::post('/import', [EmployeeImportController::class, 'store'])->name('import.store');
+        Route::post('/import', [EmployeeImportController::class, 'store'])->middleware('throttle:10,1')->name('import.store');
         Route::get('/import/template', [EmployeeImportController::class, 'template'])->name('import.template');
         Route::get('/import/{batch}', [EmployeeImportController::class, 'show'])->whereNumber('batch')->name('import.show');
         Route::post('/import/{batch}/process', [EmployeeImportController::class, 'process'])->whereNumber('batch')->name('import.process');

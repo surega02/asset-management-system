@@ -60,3 +60,7 @@ jobs:
         run: |
           php artisan migrate --seed --force
           php vendor/bin/phpunit
+      - name: Synthetic 9000-unit release load probe
+        env:
+          DB_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: php vendor/bin/phpunit tests/Release

@@ -1,0 +1,19 @@
+name: Release drill
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-and-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install backup clients
+        run: sudo apt-get update && sudo apt-get install -y mysql-client gnupg
+      - name: Build, queue restart, encrypted backup and restore
+        run: bash deploy/release-drill.sh

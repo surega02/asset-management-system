@@ -23,7 +23,7 @@ class SessionController
             ? User::query()->where('email', User::normalizeEmail($identifier))->first()
             : User::query()->whereHas('employee', fn ($query) => $query->where('nik', $identifier))->first();
 
-        $identity = $account ? 'user:'.$account->id : 'unknown:'.mb_strtolower($identifier);
+        $identity = $account ? 'user:'.$account->id : 'unknown';
         $user = IdentityAttempts::check('login', $identity, $request->ip(), function () use ($account, $input): ?User {
             return (new Timebox)->call(function (Timebox $timebox) use ($account, $input): ?User {
                 if (! $account || strlen($input['password']) > 72 || ! Hash::check($input['password'], $account->password) || ! $account->is_active) {
