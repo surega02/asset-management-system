@@ -90,7 +90,15 @@ $department = DB::table('departments')->insertGetId(['code' => 'DRILL', 'name' =
 $position = DB::table('positions')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic']);
 $location = DB::table('locations')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic', 'branch_id' => $branch]);
 $employee = DB::table('employees')->insertGetId(['nik' => 'DRILL', 'name' => 'Synthetic', 'department_id' => $department, 'position_id' => $position, 'home_location_id' => $location, 'joined_at' => '2026-01-01', 'employment_status' => 'active']);
-$user = App\Models\User::create(['employee_id' => $employee, 'password' => bin2hex(random_bytes(32))]);
+$user = App\Models\User::create(['employee_id' => $employee, 'password' => 'synthetic-release-only-password']);
+$user->assignRole(App\Support\IdentityAccess::SUPER_ADMIN);
+$category = App\Models\AssetCategory::create(['code' => 'DRILL', 'name' => 'Synthetic']);
+$type = App\Models\AssetType::create(['code' => 'DRILL', 'name' => 'Synthetic', 'category_id' => $category->id]);
+app(App\Actions\Assets\RegisterAsset::class)($user, [
+    'name' => '<img src=x onerror=alert(1)>', 'category_id' => $category->id, 'asset_type_id' => $type->id,
+    'physical_location_id' => $location, 'employee_id' => $employee,
+    'purchase_date' => '2026-01-15', 'acquisition_cost' => '1250.00',
+], ['photo' => Illuminate\Http\UploadedFile::fake()->image('synthetic.jpg', 8, 8)]);
 $batch = DB::table('import_batches')->insertGetId(['user_id' => $user->id, 'status' => 'running', 'total_rows' => 1, 'created_at' => now()]);
 DB::table('import_rows')->insert(['import_batch_id' => $batch, 'row_number' => 2, 'action' => 'skip', 'status' => 'pending']);
 App\Actions\Imports\AssetImportBatches::dispatch($batch);
@@ -123,9 +131,42 @@ test ! -e "$AMS_BACKUP_DIR/ams-20000101T000000Z.tar.gpg"
 test -e "$AMS_BACKUP_DIR/ams-20000102T000000Z.tar.gpg"
 test -e "$AMS_BACKUP_DIR/keep-unrelated.txt"
 if tar -tf "$archive" >/dev/null 2>&1; then exit 1; fi
+printf 'wrong-synthetic-passphrase\n' >"$work/wrong-passphrase"
+chmod 600 "$work/wrong-passphrase"
+if AMS_BACKUP_PASSPHRASE_FILE="$work/wrong-passphrase" bash "$repo/deploy/restore-drill.sh" "$archive"; then exit 1; fi
+test ! -e "$AMS_RESTORE_STORAGE"
 bash "$repo/deploy/restore-drill.sh" "$archive"
-cmp "$work/storage/app/private/assets/restore-probe.txt" "$work/restored/private/assets/restore-probe.txt"
+diff --recursive "$work/storage/app/private" "$work/restored/private"
 test "$(mysql --defaults-extra-file="$MYSQL_DEFAULTS" -N ams_release_restore -e "SELECT COUNT(*) FROM import_batches WHERE status='finished'")" = 1
 test "$(mysql --defaults-extra-file="$MYSQL_DEFAULTS" -N ams_release_restore -e "SELECT COUNT(*) FROM import_rows WHERE status='skipped' AND attempt_count=1")" = 1
 if bash "$repo/deploy/restore-drill.sh" "$archive"; then exit 1; fi
+
+# Boot PHP against the restored database and private files, then read via policies.
+cat >"$work/restored.yaml" <<YAML
+services:
+  php:
+    environment:
+      DB_DATABASE: ams_release_restore
+    volumes:
+      - "$AMS_RESTORE_STORAGE/private:/var/www/html/storage/app/private"
+YAML
+docker run --rm --user root -v "$AMS_RESTORE_STORAGE/private:/restored" "ams-php:$AMS_IMAGE_TAG" chown -R www-data:www-data /restored
+restored=("${compose[@]}" -f "$work/restored.yaml")
+"${restored[@]}" up -d --no-deps --force-recreate php
+for attempt in {1..30}; do
+  if curl --fail --silent http://127.0.0.1:18080/up >/dev/null; then break; fi
+  sleep 1
+done
+curl --fail --silent --cookie-jar "$work/cookies" http://127.0.0.1:18080/login >"$work/login.html"
+token=$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' "$work/login.html")
+test -n "$token"
+test "$(curl --silent --cookie "$work/cookies" --cookie-jar "$work/cookies" --output /dev/null --write-out '%{http_code}' \
+  --data-urlencode "_token=$token" --data 'login=DRILL&password=synthetic-release-only-password' \
+  http://127.0.0.1:18080/login)" = 302
+curl --fail --silent --cookie "$work/cookies" http://127.0.0.1:18080/assets/1 >"$work/asset.html"
+grep -q '&lt;img src=x onerror=alert(1)&gt;' "$work/asset.html"
+if grep -q '<img src=x onerror=alert(1)>' "$work/asset.html"; then exit 1; fi
+curl --fail --silent --cookie "$work/cookies" http://127.0.0.1:18080/assets/1/attachments/1 >"$work/downloaded.jpg"
+photo=$(mysql --defaults-extra-file="$MYSQL_DEFAULTS" -N ams_release_restore -e 'SELECT storage_path FROM asset_attachments WHERE id=1')
+cmp "$work/storage/app/private/assets/$photo" "$work/downloaded.jpg"
 printf 'release_drill=passed\n'
