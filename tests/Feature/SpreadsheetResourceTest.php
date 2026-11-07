@@ -2,14 +2,35 @@
 
 namespace Tests\Feature;
 
+use App\Support\IdentityAttempts;
 use App\Support\ReadSpreadsheet;
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use ZipArchive;
 
 class SpreadsheetResourceTest extends TestCase
 {
+    public function test_rotating_identifiers_do_not_create_unbounded_cache_files(): void
+    {
+        $directory = storage_path('framework/cache/identity-resource-'.bin2hex(random_bytes(8)));
+        config(['cache.default' => 'file', 'cache.stores.file.path' => $directory, 'cache.stores.file.lock_path' => $directory]);
+        Cache::purge('file');
+        try {
+            for ($identifier = 0; $identifier < 100; $identifier++) {
+                $this->assertNull(IdentityAttempts::check('login', 'unknown:'.$identifier, '203.0.113.10', fn () => null));
+            }
+            $this->assertCount(1, File::allFiles($directory));
+            $this->travel(61)->seconds();
+            $this->assertNull(IdentityAttempts::check('login', 'unknown:0', '203.0.113.10', fn () => null));
+            $this->assertCount(1, File::allFiles($directory));
+        } finally {
+            File::deleteDirectory($directory);
+        }
+    }
+
     public function test_csv_rejects_a_delimiter_bomb_before_allocating_its_cells(): void
     {
         $file = UploadedFile::fake()->createWithContent('bomb.csv', str_repeat(',', 9_000_000)."\n");
