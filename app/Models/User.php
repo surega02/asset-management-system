@@ -13,7 +13,14 @@ class User extends Authenticatable
 
     protected $guarded = ['id'];
 
-    protected $attributes = ['is_active' => true, 'auth_version' => 1, 'locale' => 'id'];
+    protected $attributes = ['is_active' => true, 'auth_version' => 1];
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $user): void {
+            $user->locale ??= SystemSetting::defaultLocale();
+        });
+    }
 
     protected $hidden = ['password', 'two_factor_secret', 'two_factor_recovery_codes'];
 

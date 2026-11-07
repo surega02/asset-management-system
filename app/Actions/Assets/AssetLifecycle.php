@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Queries\Assets;
 use App\Support\IdentityAccess;
 use App\Support\IdentityAudit;
+use App\Support\SystemNotifications;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -38,7 +39,8 @@ final class AssetLifecycle
                 'asset_id' => $asset->id, 'actor_id' => $actor->id, 'reason' => $reason,
                 'deactivated_at' => $endedAt->format('Y-m-d H:i:s.u'), 'attachment_id' => $ids['deactivation'] ?? null,
             ]);
-            IdentityAudit::record($actor->id, $asset, 'asset.deactivated', $reason, $before, $asset->getAttributes() + ['attachment_ids' => $ids]);
+            $auditId = IdentityAudit::record($actor->id, $asset, 'asset.deactivated', $reason, $before, $asset->getAttributes() + ['attachment_ids' => $ids]);
+            SystemNotifications::record('asset_deactivated', $asset->id, 'audit:'.$auditId);
         }, 3));
     }
 
@@ -59,8 +61,9 @@ final class AssetLifecycle
             $assignment = $asset->activeAssignment()->create($target + ['actor_id' => $actor->id, 'started_at' => $startedAt, 'reason' => $reason]);
             $before = $asset->getAttributes();
             $asset->update($state + ['is_active' => true]);
-            IdentityAudit::record($actor->id, $asset, 'asset.reactivated', $reason, $before,
+            $auditId = IdentityAudit::record($actor->id, $asset, 'asset.reactivated', $reason, $before,
                 $asset->getAttributes() + $target + ['assignment_id' => $assignment->id]);
+            SystemNotifications::record('asset_reactivated', $asset->id, 'audit:'.$auditId);
         }, 3);
     }
 

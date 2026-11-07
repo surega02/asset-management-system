@@ -5,6 +5,7 @@ namespace App\Actions\Employees;
 use App\Models\Employee;
 use App\Models\User;
 use App\Support\IdentityAccess;
+use App\Support\SystemNotifications;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
@@ -61,7 +62,7 @@ final class ImportEmployees
             ->orderBy('line')->limit(50)->get(['id', 'attempts']);
 
         foreach ($ids as $candidate) {
-            DB::transaction(function () use ($actor, $batch, $candidate, $status): void {
+            DB::transaction(function () use ($actor, $batch, $candidate, $status, $retry): void {
                 $actor = IdentityAccess::lockScopedActor($actor);
                 Gate::forUser($actor)->authorize('import', Employee::class);
                 $owned = DB::table('employee_imports')->where('user_id', $actor->id)
@@ -97,7 +98,21 @@ final class ImportEmployees
                     'error_key' => $error,
                     'employee_id' => $employee?->id,
                 ]);
+                if (! $retry) {
+                    $this->recordCompletedBatch($batch);
+                }
             }, 3);
+        }
+        if ($retry && $ids->isNotEmpty()) {
+            $this->recordCompletedBatch($batch);
+        }
+    }
+
+    private function recordCompletedBatch(int $batch): void
+    {
+        $rows = DB::table('employee_import_rows')->where('employee_import_id', $batch);
+        if (! (clone $rows)->where('status', 'pending')->exists()) {
+            SystemNotifications::record('employee_import', $batch, 'employee-import:'.$batch.':'.$rows->sum('attempts'));
         }
     }
 }

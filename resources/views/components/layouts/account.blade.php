@@ -5,6 +5,13 @@
         <nav aria-label="{{ __('iam.account_navigation') }}" class="flex flex-wrap items-center gap-2">
             <a class="nav-link" href="{{ route('workspace') }}">{{ __('iam.workspace') }}</a>
             <a class="nav-link" href="{{ route('security.show') }}">{{ __('iam.security') }}</a>
+            <a class="nav-link" href="{{ route('system.notifications') }}">{{ __('system.notifications') }}</a>
+            @can('view-audit')
+                <a class="nav-link" href="{{ route('system.audit') }}">{{ __('system.audit') }}</a>
+            @endcan
+            @can('update-global-settings')
+                <a class="nav-link" href="{{ route('system.settings') }}">{{ __('system.settings') }}</a>
+            @endcan
             @can('viewAny', \App\Models\Asset::class)
                 <a @class(['nav-link', 'nav-link-current' => request()->routeIs('assets.*')]) href="{{ route('assets.index') }}"
                     @if(request()->routeIs('assets.*')) aria-current="true" @endif>{{ __('assets.title') }}</a>

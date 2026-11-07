@@ -51,8 +51,7 @@ final class PrintAssetLabels
             $template = DB::table('asset_label_templates')->where('is_active', true)->sharedLock()->find($job->template_id);
             abort_if($template === null, 404);
             $fields = json_decode($job->selected_fields, true, flags: JSON_THROW_ON_ERROR);
-            $this->checkFields($fields, $template);
-
+            $fields = array_values(array_intersect($fields, self::OPTIONAL_FIELDS, json_decode($template->allowed_fields, true, flags: JSON_THROW_ON_ERROR)));
             $assets->load('type.category', 'status');
             $labels = $assets->map(fn (Asset $asset) => [
                 'code' => $asset->asset_code, 'name' => $asset->name, 'category' => $asset->type->category->name,
