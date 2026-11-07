@@ -37,24 +37,32 @@ class ReleaseLoadTest extends TestCase
         $tree = Fixture::tree();
         $other = Fixture::tree();
         $type = AssignmentFixture::type();
+        $secondType = AssignmentFixture::type();
         $actor = Fixture::actor($tree, 'branch', [Assets::VIEW, Assets::CREATE, Assets::IMPORT]);
         $defaults = DB::table('asset_catalog_defaults')->sole();
+        $usedStatus = Fixture::insert('asset_statuses', 'RELEASE-USED', 'Synthetic in use');
+        $wornCondition = Fixture::insert('asset_conditions', 'RELEASE-WORN', 'Synthetic worn');
         $this->assertSame(0, DB::table('assets')->count(), 'Release probe requires an empty synthetic test database.');
         for ($start = 1; $start <= 8000; $start += 250) {
             $units = [];
             for ($number = $start; $number < $start + 250; $number++) {
                 $units[] = [
                     'asset_code' => sprintf('AST-%06d', $number), 'public_token' => hash('sha256', 'synthetic-'.$number),
-                    'asset_type_id' => $type->id, 'physical_location_id' => $number % 2 ? $tree['location'] : $other['location'],
-                    'status_id' => $defaults->status_id, 'condition_id' => $defaults->condition_id,
-                    'name' => 'Synthetic unit '.$number, 'purchase_date' => '2026-01-15', 'acquisition_cost' => '1250.00',
+                    'asset_type_id' => $number % 3 ? $type->id : $secondType->id,
+                    'physical_location_id' => $number % 2 ? $tree['location'] : $other['location'],
+                    'status_id' => $number % 3 ? $defaults->status_id : $usedStatus,
+                    'condition_id' => $number % 5 ? $defaults->condition_id : $wornCondition,
+                    'name' => 'Synthetic unit '.$number, 'purchase_date' => sprintf('2025-%02d-15', $number % 12 + 1), 'acquisition_cost' => '1250.00',
                     'is_active' => true, 'registered_at' => now(), 'updated_at' => now(),
                 ];
             }
             DB::table('assets')->insert($units);
             $ids = DB::table('assets')->whereIn('asset_code', array_column($units, 'asset_code'))->get(['id', 'physical_location_id']);
-            DB::table('asset_assignments')->insert($ids->map(fn ($unit) => [
-                'asset_id' => $unit->id, 'location_id' => $unit->physical_location_id,
+            DB::table('asset_assignments')->insert($ids->map(fn ($unit, $index) => [
+                'asset_id' => $unit->id,
+                'employee_id' => $index % 3 === 0 ? $actor->employee_id : null,
+                'department_id' => $index % 3 === 1 ? $tree['department'] : null,
+                'location_id' => $index % 3 === 2 ? $unit->physical_location_id : null,
                 'started_at' => now(), 'actor_id' => $actor->id, 'reason' => 'Synthetic release probe',
             ])->all());
         }

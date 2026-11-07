@@ -48,6 +48,14 @@ printf 'AMS_TRUSTED_PROXIES=%s\n' "$gateway" >>"$AMS_ENV_FILE"
 "${compose[@]}" build php web
 "${compose[@]}" run --rm php php artisan migrate --seed --force
 "${compose[@]}" up -d php web worker scheduler
+worker_id=$("${compose[@]}" ps -q worker)
+docker kill "$worker_id" >/dev/null
+for attempt in {1..20}; do
+  state=$(docker inspect "$worker_id" --format '{{.State.Running}} {{.RestartCount}}')
+  if [[ "$state" == 'true 1' ]]; then break; fi
+  sleep 1
+done
+test "$state" = 'true 1'
 "${compose[@]}" exec -T web nginx -t
 for attempt in {1..30}; do
   if curl --fail --silent http://127.0.0.1:18080/up >/dev/null; then break; fi
