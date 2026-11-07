@@ -49,7 +49,8 @@ printf 'AMS_TRUSTED_PROXIES=%s\n' "$gateway" >>"$AMS_ENV_FILE"
 "${compose[@]}" run --rm php php artisan migrate --seed --force
 "${compose[@]}" up -d php web worker scheduler
 worker_id=$("${compose[@]}" ps -q worker)
-docker kill "$worker_id" >/dev/null
+sleep 2
+"${compose[@]}" exec -T worker sh -c 'kill -TERM 1'
 for attempt in {1..20}; do
   state=$(docker inspect "$worker_id" --format '{{.State.Running}} {{.RestartCount}}')
   if [[ "$state" == 'true 1' ]]; then break; fi
