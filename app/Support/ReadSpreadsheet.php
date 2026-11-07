@@ -12,9 +12,13 @@ final class ReadSpreadsheet
 {
     private const MAX_ROWS = 1000;
 
+    private const MAX_CSV_RECORD_BYTES = 1048576;
+
     private const MAX_EXPANDED_BYTES = 12 * 1024 * 1024;
 
     private const MAX_XML_BYTES = 4 * 1024 * 1024;
+
+    private const MAX_CELL_BYTES = 32000;
 
     public function records(UploadedFile $file, int $columns, array $dateColumns, array $textColumns, bool $variableWidth = false): array
     {
@@ -24,10 +28,10 @@ final class ReadSpreadsheet
             $this->invalid();
         }
 
-        return $extension === 'csv' ? $this->csv($path) : $this->xlsx($path, $columns, $dateColumns, $textColumns, $variableWidth);
+        return $extension === 'csv' ? $this->csv($path, $columns) : $this->xlsx($path, $columns, $dateColumns, $textColumns, $variableWidth);
     }
 
-    private function csv(string $path): array
+    private function csv(string $path, int $columns): array
     {
         $stream = fopen($path, 'rb');
         if ($stream === false) {
@@ -39,10 +43,50 @@ final class ReadSpreadsheet
             if (fread($stream, 3) !== "\xEF\xBB\xBF") {
                 rewind($stream);
             }
-            for ($line = 1; ($row = fgetcsv($stream, separator: ',', escape: '')) !== false; $line++) {
-                if ($row !== [null]) {
+            $line = 0;
+            $record = '';
+            $quoted = false;
+            $fieldStart = true;
+            $width = 1;
+            while (($part = fgets($stream, self::MAX_CSV_RECORD_BYTES + 2)) !== false) {
+                if (strlen($record) + strlen($part) > self::MAX_CSV_RECORD_BYTES) {
+                    $this->invalid();
+                }
+                $record .= $part;
+                for ($index = 0, $length = strlen($part); $index < $length; $index++) {
+                    $character = $part[$index];
+                    if ($quoted) {
+                        if ($character === '"') {
+                            if (($part[$index + 1] ?? null) === '"') {
+                                $index++;
+                            } else {
+                                $quoted = false;
+                            }
+                        }
+                    } elseif ($character === ',') {
+                        $width++;
+                        $fieldStart = true;
+                    } elseif ($fieldStart && $character === '"') {
+                        $quoted = true;
+                        $fieldStart = false;
+                    } elseif ($character !== ' ' && $character !== "\t") {
+                        $fieldStart = false;
+                    }
+                }
+                if ($quoted) {
+                    continue;
+                }
+                $line++;
+                if (rtrim($record, "\r\n") !== '') {
+                    $row = $width > $columns ? null : str_getcsv($record, escape: '');
                     $this->append($data, $line, $row);
                 }
+                $record = '';
+                $width = 1;
+                $fieldStart = true;
+            }
+            if ($quoted) {
+                $this->append($data, $line + 1, null);
             }
         } finally {
             fclose($stream);
@@ -102,6 +146,7 @@ final class ReadSpreadsheet
             }
             $dateSystem = (string) (($workbook->xpath('//*[local-name()="workbookPr"]')[0] ?? null)['date1904'] ?? '');
             $data = [];
+            $decodedBytes = 0;
             $lastLine = 0;
             $worksheet = $this->xml($zip, 'xl/'.$target);
             foreach ($worksheet->xpath('//*[local-name()="sheetData"]/*[local-name()="row"]') as $row) {
@@ -114,12 +159,18 @@ final class ReadSpreadsheet
                 $width = $variableWidth && $header !== [] ? count($header) : $columns;
                 $values = $this->xlsxRow($row, $shared, $dateSystem === '1' || $dateSystem === 'true', $line, $width,
                     $header, $dateColumns, $textColumns);
+                if ($values !== null) {
+                    $decodedBytes += array_sum(array_map('strlen', $values));
+                    if ($decodedBytes > self::MAX_EXPANDED_BYTES) {
+                        $this->invalid();
+                    }
+                }
                 if ($variableWidth && $data === [] && $values !== null) {
                     while ($values !== [] && end($values) === '') {
                         array_pop($values);
                     }
                 }
-                if ($values !== [] && ($values === null || implode('', $values) !== '')) {
+                if ($values === null || array_filter($values, fn ($value) => $value !== '') !== []) {
                     $this->append($data, $line, $values);
                 }
             }
@@ -147,6 +198,9 @@ final class ReadSpreadsheet
                 $value = $shared[(int) $value];
             } elseif ($type === 'inlineStr') {
                 $value = $this->text($cell);
+            }
+            if (strlen($value) > self::MAX_CELL_BYTES) {
+                return null;
             }
             if ($value === '') {
                 continue;

@@ -96,6 +96,19 @@ class IdentityTest extends TestCase
         $this->post('/login', ['login' => ' M02@EXAMPLE.TEST ', 'password' => self::PASSWORD])->assertRedirect('/workspace');
     }
 
+    public function test_unknown_identifiers_keep_independent_five_attempt_limits(): void
+    {
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post('/login', ['login' => 'unknown-'.$attempt, 'password' => 'invalid-password'])
+                ->assertSessionHasErrors('login');
+        }
+        $this->post('/login', ['login' => 'another-unknown', 'password' => 'invalid-password'])->assertSessionHasErrors('login');
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            $this->post('/login', ['login' => 'unknown-0', 'password' => 'invalid-password'])->assertSessionHasErrors('login');
+        }
+        $this->post('/login', ['login' => 'unknown-0', 'password' => 'invalid-password'])->assertStatus(429);
+    }
+
     public function test_employee_nik_is_immutable_and_database_rejects_ambiguous_or_duplicate_identifiers(): void
     {
         $first = $this->account(['email' => 'First@Example.test']);
