@@ -5,6 +5,7 @@ namespace Tests\Release;
 use App\Actions\Imports\AssetImportBatches;
 use App\Actions\Imports\ProcessImportRow;
 use App\Jobs\ProcessAssetImport;
+use App\Models\Asset;
 use App\Queries\AssetReports;
 use App\Queries\Assets;
 use Database\Seeders\IdentitySeeder;
@@ -57,7 +58,7 @@ class ReleaseLoadTest extends TestCase
                 ];
             }
             DB::table('assets')->insert($units);
-            $ids = DB::table('assets')->whereIn('asset_code', array_column($units, 'asset_code'))->get(['id', 'physical_location_id']);
+            $ids = DB::table('assets')->whereIn('asset_code', array_column($units, 'asset_code'))->get(['id', 'physical_location_id', 'status_id', 'condition_id']);
             DB::table('asset_assignments')->insert($ids->map(fn ($unit, $index) => [
                 'asset_id' => $unit->id,
                 'employee_id' => $index % 3 === 0 ? $actor->employee_id : null,
@@ -65,10 +66,21 @@ class ReleaseLoadTest extends TestCase
                 'location_id' => $index % 3 === 2 ? $unit->physical_location_id : null,
                 'started_at' => now(), 'actor_id' => $actor->id, 'reason' => 'Synthetic release probe',
             ])->all());
+            DB::table('asset_location_histories')->insert($ids->map(fn ($unit) => [
+                'asset_id' => $unit->id, 'to_location_id' => $unit->physical_location_id, 'actor_id' => $actor->id,
+                'reason' => 'Synthetic registration', 'changed_at' => now()->subDays(1),
+            ])->all());
+            DB::table('audit_logs')->insert($ids->map(fn ($unit) => [
+                'asset_id' => $unit->id, 'actor_id' => $actor->id, 'subject_type' => Asset::class, 'subject_id' => $unit->id,
+                'event' => 'asset.state_changed', 'reason' => 'Synthetic state change', 'created_at' => now(),
+                'old_values' => json_encode(['status_id' => $unit->status_id === $usedStatus ? $defaults->status_id : $usedStatus]),
+                'new_values' => json_encode(['status_id' => $unit->status_id]),
+            ])->all());
         }
         DB::table('asset_number_sequences')->where('key', 'AST')->update(['next_number' => 8001]);
         $this->actingAs($actor)->withSession(['auth.version' => $actor->auth_version]);
         $this->assertSame(4000, Assets::operational($actor)->count());
+        $this->assertSame(4000, AssetReports::events($actor, [])->count());
         $metrics = [];
         foreach (['/workspace', '/assets', '/reports/units', '/reports/groups', '/reports/events'] as $url) {
             $this->get($url)->assertOk();
