@@ -24,6 +24,7 @@ require __DIR__.'/asset-catalog.php';
 require __DIR__.'/assets.php';
 require __DIR__.'/asset-import.php';
 require __DIR__.'/qr.php';
+require __DIR__.'/reports.php';
 
 Schedule::call(fn () => DB::table('employee_imports')->where('created_at', '<', now()->subDays(90))->delete())
     ->name('prune-employee-imports')->daily();

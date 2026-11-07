@@ -8,6 +8,8 @@
             @can('viewAny', \App\Models\Asset::class)
                 <a @class(['nav-link', 'nav-link-current' => request()->routeIs('assets.*')]) href="{{ route('assets.index') }}"
                     @if(request()->routeIs('assets.*')) aria-current="true" @endif>{{ __('assets.title') }}</a>
+                <a @class(['nav-link', 'nav-link-current' => request()->routeIs('reports.*')]) href="{{ route('reports.show') }}"
+                    @if(request()->routeIs('reports.*')) aria-current="true" @endif>{{ __('reports.title') }}</a>
             @endcan
             @can('viewAny', \App\Models\User::class)
                 <a class="nav-link" href="{{ route('accounts.index') }}">{{ __('iam.accounts') }}</a>
