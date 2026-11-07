@@ -6,7 +6,18 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 export AMS_ENV_FILE="$work/ams.env" AMS_IMAGE_TAG=release-drill AMS_HTTP_PORT=18080
 compose=(docker compose --project-directory "$repo" -p ams-release-drill -f "$repo/compose.yaml" -f "$work/db.yaml")
-trap '"${compose[@]}" logs --tail=80; "${compose[@]}" down -v; rm -rf -- "$work"' EXIT
+cleanup() {
+  result=$?
+  "${compose[@]}" logs --tail=80 || true
+  "${compose[@]}" down -v || true
+  if [[ -d "$work/restored/private" ]]; then
+    docker run --rm --user root -v "$work/restored:/restored" "ams-php:$AMS_IMAGE_TAG" \
+      chown -R "$(id -u):$(id -g)" /restored || result=1
+  fi
+  rm -rf -- "$work" || result=1
+  exit "$result"
+}
+trap cleanup EXIT
 cat >"$work/db.yaml" <<'YAML'
 services:
   db:
@@ -160,7 +171,7 @@ for attempt in {1..30}; do
   sleep 1
 done
 curl --max-time 10 --fail --silent --cookie-jar "$work/cookies" http://127.0.0.1:18080/login >"$work/login.html"
-token=$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' "$work/login.html")
+token=$(sed -n 's/.*<meta name="csrf-token" content="\([^"]*\)".*/\1/p' "$work/login.html")
 test -n "$token"
 test "$(curl --max-time 10 --silent --cookie "$work/cookies" --cookie-jar "$work/cookies" --output /dev/null --write-out '%{http_code}' \
   --data-urlencode "_token=$token" --data 'login=DRILL&password=synthetic-release-only-password' \
