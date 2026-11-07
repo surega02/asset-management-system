@@ -63,8 +63,8 @@ for attempt in {1..30}; do
   sleep 2
 done
 curl --max-time 10 --fail --silent http://127.0.0.1:18080/up >/dev/null
-curl --max-time 10 --fail --silent http://127.0.0.1:18080/login | grep -q 'csrf-token'
-curl --max-time 10 --fail --silent --header 'X-Forwarded-Proto: https' http://127.0.0.1:18080/login | grep -q 'action="https://'
+curl --max-time 10 --fail --silent http://127.0.0.1:18080/login | grep 'csrf-token' >/dev/null
+curl --max-time 10 --fail --silent --header 'X-Forwarded-Proto: https' http://127.0.0.1:18080/login | grep 'action="https://' >/dev/null
 curl --max-time 10 --fail --silent http://127.0.0.1:18080/build/app.css >/dev/null
 for path in /.env /index.php /storage/app/private/test; do
   test "$(curl --max-time 10 --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:18080$path")" = 404
