@@ -29,6 +29,16 @@ final class AssetPolicy
         return $this->canOperate($actor, $asset, Assets::LIFECYCLE);
     }
 
+    public function import(User $actor): bool
+    {
+        return $this->viewAny($actor) && Assets::locations($actor, Assets::IMPORT)->exists();
+    }
+
+    public function update(User $actor, Asset $asset): bool
+    {
+        return $asset->is_active && $this->canOperate($actor, $asset, Assets::UPDATE);
+    }
+
     public function updateState(User $actor, Asset $asset): bool
     {
         return $this->canOperate($actor, $asset, Assets::UPDATE_STATE);

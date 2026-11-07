@@ -3,17 +3,13 @@
 namespace App\Actions\Assets;
 
 use App\Models\Asset;
-use App\Models\Brand;
 use App\Models\User;
-use App\Models\Vendor;
 use App\Queries\Assets;
 use App\Support\IdentityAccess;
 use App\Support\IdentityAudit;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 
 final class RegisterAsset
 {
@@ -22,24 +18,7 @@ final class RegisterAsset
     public function __invoke(User $actor, array $input, array $uploads = []): Asset
     {
         Gate::forUser($actor)->authorize('create', Asset::class);
-        $id = ['required', 'integer', 'min:1'];
-        $optionalId = ['nullable', 'integer', 'min:1'];
-        $data = Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
-            'category_id' => $id,
-            'asset_type_id' => $id,
-            'physical_location_id' => $id,
-            'status_id' => $optionalId,
-            'condition_id' => $optionalId,
-            'purchase_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:1000-01-01', 'before_or_equal:9999-12-31'],
-            'acquisition_cost' => ['required', 'string', 'regex:/\A[0-9]{1,16}(?:\.[0-9]{1,2})?\z/'],
-            'serial_number' => ['nullable', 'string', 'max:255'],
-            'invoice_number' => ['nullable', 'string', 'max:255'],
-            'brand_id' => $optionalId,
-            'vendor_id' => $optionalId,
-            'warranty_ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:1000-01-01', 'before_or_equal:9999-12-31'],
-            'attributes' => ['nullable', 'array'],
-        ], attributes: __('assets.fields'))->validate();
+        $data = AssetInput::validate($input);
 
         Gate::forUser($actor)->authorize('create', [Asset::class, (int) $data['physical_location_id']]);
 
@@ -55,11 +34,7 @@ final class RegisterAsset
         $resolved = $this->catalog->resolve((int) $data['category_id'], (int) $data['asset_type_id'], $data['attributes'] ?? [],
             isset($data['status_id']) ? (int) $data['status_id'] : null, isset($data['condition_id']) ? (int) $data['condition_id'] : null, forWrite: true);
         $target = $this->targets->validate($actor, Assets::CREATE, $assignment);
-        foreach (['brand_id' => Brand::class, 'vendor_id' => Vendor::class] as $key => $model) {
-            if (isset($data[$key]) && ! $model::query()->where('is_active', true)->sharedLock()->find($data[$key])) {
-                throw ValidationException::withMessages([$key => __('assets.invalid_reference')]);
-            }
-        }
+        AssetInput::validateReferences($data, forWrite: true);
 
         $number = DB::table('asset_number_sequences')->where('key', 'AST')->lockForUpdate()->sole()->next_number;
         DB::table('asset_number_sequences')->where('key', 'AST')->increment('next_number');
