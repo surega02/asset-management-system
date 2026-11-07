@@ -34,5 +34,6 @@ class AppServiceProvider extends ServiceProvider
         }
         Gate::define('manage-access-catalog', fn (User $actor): bool => IdentityAccess::superAdminCan($actor, 'roles.manage'));
         Gate::define('update-global-settings', fn (User $actor): bool => IdentityAccess::superAdminCan($actor, 'settings.manage'));
+        Gate::define('view-audit', fn (User $actor): bool => $actor->is_active && $actor->checkPermissionTo('audit.view'));
     }
 }

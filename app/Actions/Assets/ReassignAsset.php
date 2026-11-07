@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Queries\Assets;
 use App\Support\IdentityAccess;
 use App\Support\IdentityAudit;
+use App\Support\SystemNotifications;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -51,9 +52,13 @@ final class ReassignAsset
                 'actor_id' => $actor->id, 'started_at' => $changedAt, 'reason' => $reason,
             ]);
             $asset->touch();
-            IdentityAudit::record($actor->id, $asset, 'asset.reassigned', $reason,
+            $auditId = IdentityAudit::record($actor->id, $asset, 'asset.reassigned', $reason,
                 $previous->only(AssetTargets::KEYS) + ['assignment_id' => $previous->id],
                 $next->only(AssetTargets::KEYS) + ['assignment_id' => $next->id]);
+            if ($previous->employee_id !== null || $next->employee_id !== null) {
+                SystemNotifications::record('asset_reassigned', $asset->id, 'audit:'.$auditId,
+                    ['old_employee_id' => $previous->employee_id, 'new_employee_id' => $next->employee_id]);
+            }
         }, 3);
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Position;
 use App\Models\User;
 use App\Support\IdentityAccess;
 use App\Support\IdentityAudit;
+use App\Support\SystemNotifications;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -104,7 +105,10 @@ final class ManageEmployee
                 }
             }
             DB::table('employee_movements')->insert($history);
-            IdentityAudit::record($actor->id, $employee, 'employee.transferred', $data['reason'], $before, $after);
+            $auditId = IdentityAudit::record($actor->id, $employee, 'employee.transferred', $data['reason'], $before, $after);
+            if ($count > 0) {
+                SystemNotifications::record('employee_transferred', $employee->id, 'audit:'.$auditId);
+            }
 
             return $count;
         }, 3);

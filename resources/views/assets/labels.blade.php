@@ -2,6 +2,7 @@
     $selected = array_map('strval', array_filter((array) old('asset_ids', []), 'is_scalar'));
     $selectedFields = array_filter((array) old('fields', ['name']), 'is_string');
     $selectedTemplate = is_scalar(old('template_id')) ? (string) old('template_id') : (string) $templates->firstWhere('name', 'standard')?->id;
+    $allowed = $templates->mapWithKeys(fn ($template) => [$template->id => json_decode($template->allowed_fields, true)]);
 @endphp
 <x-layouts.account :title="__('qr.labels')">
     <div class="flex flex-wrap gap-2">
@@ -38,9 +39,9 @@
                     </ul>
                 @endif
             </x-ui.panel>
-            <x-ui.panel class="grid gap-3 p-4 sm:p-5">
+            <x-ui.panel class="grid gap-3 p-4 sm:p-5" x-data="{ template: @js($selectedTemplate), allowed: @js($allowed) }">
                 <h2>{{ __('qr.template') }}</h2>
-                <x-ui.select-field name="template_id" :label="__('qr.template')" required>
+                <x-ui.select-field name="template_id" :label="__('qr.template')" x-model="template" required>
                     @foreach($templates as $template)
                         <option value="{{ $template->id }}" @selected($selectedTemplate === (string) $template->id)>
                             {{ __('qr.size', ['width' => rtrim(rtrim($template->width_mm, '0'), '.'), 'height' => rtrim(rtrim($template->height_mm, '0'), '.')]) }}
@@ -52,7 +53,8 @@
                     <p>{{ __('qr.required_fields') }}</p>
                     @foreach($fields as $field)
                         <label class="flex min-h-11 cursor-pointer items-center gap-3">
-                            <input class="size-5" type="checkbox" name="fields[]" value="{{ $field }}" @checked(in_array($field, $selectedFields, true))>
+                            <input class="size-5" type="checkbox" name="fields[]" value="{{ $field }}" @checked(in_array($field, $selectedFields, true))
+                                x-bind:disabled="!allowed[template]?.includes(@js($field))">
                             <span>{{ __('qr.'.$field) }}</span>
                         </label>
                     @endforeach

@@ -6,6 +6,7 @@ use App\Models\ImportRow;
 use App\Models\User;
 use App\Support\IdentityAccess;
 use App\Support\IdentityAudit;
+use App\Support\SystemNotifications;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,7 @@ final class ProcessImportRow
                 DB::table('import_batches')->where('id', $id)->update([
                     'status' => 'finished', 'finished_at' => now(), 'next_dispatch_at' => null,
                 ]);
+                SystemNotifications::record('asset_import', $id, 'asset-import:'.$id.':'.$rows->sum('attempt_count'));
 
                 return null;
             }

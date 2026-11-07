@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Queries\AssetReports;
+use App\Support\IdentityAudit;
 use App\Support\SpreadsheetDownload;
 use Generator;
 use Illuminate\Contracts\View\View;
@@ -85,10 +86,11 @@ final class AssetReportController
     private function cells(object $row, string $mode): array
     {
         $none = __('reports.none');
+        $reason = isset($row->reason) ? IdentityAudit::safeText($row->reason) : $none;
 
         return match ($mode) {
             'events' => [$row->code, $row->name, $row->occurred, __('reports.events.'.$row->kind),
-                $row->previous_value ?? $none, $row->next_value ?? $none, $row->actor ?? $none, $row->reason ?? $none],
+                $row->previous_value ?? $none, $row->next_value ?? $none, $row->actor ?? $none, $reason === '[redacted]' ? __('system.redacted') : $reason],
             'groups' => [$row->name ?? $none, (int) $row->total, (int) $row->active, (int) $row->inactive],
             default => [$row->code, $row->name, $row->branch, $row->location, $row->department ?? $none,
                 $row->employee ?? $none, $row->responsible_location ?? $none, $row->category, $row->status,
