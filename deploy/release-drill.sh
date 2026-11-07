@@ -67,15 +67,24 @@ test "$(curl --silent --output /dev/null --write-out '%{http_code}' --request PO
 require 'vendor/autoload.php';
 $app = require 'bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+set_exception_handler(function (Throwable $exception): void {
+    fwrite(STDERR, 'Synthetic fixture failed: '.$exception->getMessage().PHP_EOL);
+    exit(1);
+});
 use Illuminate\Support\Facades\DB;
 $branch = DB::table('branches')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic']);
 $division = DB::table('divisions')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic', 'branch_id' => $branch]);
 $department = DB::table('departments')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic', 'division_id' => $division]);
-$employee = DB::table('employees')->insertGetId(['nik' => 'DRILL', 'name' => 'Synthetic', 'department_id' => $department, 'joined_at' => '2026-01-01', 'employment_status' => 'active']);
+$position = DB::table('positions')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic']);
+$location = DB::table('locations')->insertGetId(['code' => 'DRILL', 'name' => 'Synthetic', 'branch_id' => $branch]);
+$employee = DB::table('employees')->insertGetId(['nik' => 'DRILL', 'name' => 'Synthetic', 'department_id' => $department, 'position_id' => $position, 'home_location_id' => $location, 'joined_at' => '2026-01-01', 'employment_status' => 'active']);
 $user = App\Models\User::create(['employee_id' => $employee, 'password' => bin2hex(random_bytes(32))]);
 $batch = DB::table('import_batches')->insertGetId(['user_id' => $user->id, 'status' => 'running', 'total_rows' => 1, 'created_at' => now()]);
 DB::table('import_rows')->insert(['import_batch_id' => $batch, 'row_number' => 2, 'action' => 'skip', 'status' => 'pending']);
 App\Actions\Imports\AssetImportBatches::dispatch($batch);
+if (DB::table('jobs')->count() !== 1) {
+    exit(1);
+}
 file_put_contents(storage_path('app/private/assets/restore-probe.txt'), 'synthetic-private-file');
 PHP
 "${compose[@]}" start worker
