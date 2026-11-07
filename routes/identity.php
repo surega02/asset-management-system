@@ -6,6 +6,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TwoFactorSettingsController;
+use App\Http\Controllers\WorkspaceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -22,7 +23,7 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
-    Route::view('/workspace', 'auth.workspace')->name('workspace');
+    Route::get('/workspace', WorkspaceController::class)->name('workspace');
     Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
     Route::post('/preferences/theme', function (Request $request) {
         $data = $request->validate(['theme' => ['required', 'in:light,dark']]);
