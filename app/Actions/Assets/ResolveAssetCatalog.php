@@ -30,11 +30,7 @@ final class ResolveAssetCatalog
         }
 
         $defaults = AssetCatalogDefault::query()->when($forWrite, fn ($query) => $query->sharedLock())->findOrFail(AssetCatalogDefault::ID);
-        $type = AssetType::query()->where('category_id', $categoryId)->where('is_active', true)
-            ->when($forWrite, fn ($query) => $query->sharedLock())->find($typeId);
-        if (! $type || ! $type->category()->where('is_active', true)->when($forWrite, fn ($query) => $query->sharedLock())->first(['id'])) {
-            throw ValidationException::withMessages(['asset_type_id' => __('asset_catalog.invalid_type')]);
-        }
+        $type = $this->type($categoryId, $typeId, $forWrite);
 
         $statusId ??= $defaults->status_id;
         $conditionId ??= $defaults->condition_id;
@@ -45,7 +41,26 @@ final class ResolveAssetCatalog
             throw ValidationException::withMessages(['condition_id' => __('asset_catalog.invalid_condition')]);
         }
 
-        $definitions = $this->definitionQuery($type->id)
+        return [
+            'asset_type_id' => $type->id, 'status_id' => $statusId, 'condition_id' => $conditionId,
+            'attributes' => $this->attributes($type->id, $values, $forWrite),
+        ];
+    }
+
+    public function type(int $categoryId, int $typeId, bool $forWrite): AssetType
+    {
+        $type = AssetType::query()->where('category_id', $categoryId)->where('is_active', true)
+            ->when($forWrite, fn ($query) => $query->sharedLock())->find($typeId);
+        if (! $type || ! $type->category()->where('is_active', true)->when($forWrite, fn ($query) => $query->sharedLock())->first(['id'])) {
+            throw ValidationException::withMessages(['asset_type_id' => __('asset_catalog.invalid_type')]);
+        }
+
+        return $type;
+    }
+
+    public function attributes(int $typeId, array $values, bool $forWrite): array
+    {
+        $definitions = $this->definitionQuery($typeId)
             ->when($forWrite, fn ($query) => $query->sharedLock())
             ->get()->keyBy('key');
         $errors = [];
@@ -76,7 +91,7 @@ final class ResolveAssetCatalog
             throw ValidationException::withMessages($errors);
         }
 
-        return ['asset_type_id' => $type->id, 'status_id' => $statusId, 'condition_id' => $conditionId, 'attributes' => $result];
+        return $result;
     }
 
     /** Display fields for a type already authorized by the caller. */

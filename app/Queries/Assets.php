@@ -14,6 +14,10 @@ final class Assets
 
     public const CREATE = 'assets.create';
 
+    public const IMPORT = 'assets.import';
+
+    public const UPDATE = 'assets.update';
+
     public const LIFECYCLE = 'assets.lifecycle';
 
     public const UPDATE_STATE = 'assets.update-state';

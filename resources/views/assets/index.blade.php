@@ -3,6 +3,9 @@
         <p>{{ __('assets.list_help') }}</p>
         <div class="flex flex-wrap gap-2">
             <a class="ui-button" href="{{ route('assets.scan') }}">{{ __('qr.scan_title') }}</a>
+            @can('import', \App\Models\Asset::class)
+                <a class="ui-button" href="{{ route('assets.import.create') }}">{{ __('asset_import.title') }}</a>
+            @endcan
             @can('printAny', \App\Models\Asset::class)
                 <a class="ui-button" href="{{ route('assets.labels.create') }}">{{ __('qr.labels') }}</a>
             @endcan

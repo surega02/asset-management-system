@@ -34,7 +34,7 @@ final class AssetTargets
             ?? throw ValidationException::withMessages(['physical_location_id' => __('assets.invalid_location')]);
     }
 
-    public function validate(User $actor, string $permission, array $input): array
+    public function validate(User $actor, string $permission, array $input, bool $forWrite = true): array
     {
         $data = Validator::make($input, array_fill_keys(self::KEYS, ['nullable', 'integer', 'min:1']),
             attributes: array_fill_keys(self::KEYS, __('assets.assignee')))->validate();
@@ -46,9 +46,12 @@ final class AssetTargets
         $kind = array_key_first($targets);
         $id = (int) $targets[$kind];
         $eligible = match ($kind) {
-            'employee_id' => $this->eligibleEmployee($actor, $permission, $id),
-            'department_id' => $this->departments($actor, $permission)->where('is_active', true)->sharedLock()->find($id) !== null,
-            'location_id' => Assets::locations($actor, $permission)->where('is_active', true)->sharedLock()->find($id) !== null,
+            'employee_id' => $forWrite ? $this->eligibleEmployee($actor, $permission, $id)
+                : $this->employees($actor, $permission)->where('employment_status', 'active')->whereKey($id)->exists(),
+            'department_id' => $this->departments($actor, $permission)->where('is_active', true)
+                ->when($forWrite, fn ($query) => $query->sharedLock())->find($id) !== null,
+            'location_id' => Assets::locations($actor, $permission)->where('is_active', true)
+                ->when($forWrite, fn ($query) => $query->sharedLock())->find($id) !== null,
         };
 
         if (! $eligible) {
