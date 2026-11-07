@@ -80,7 +80,7 @@ class SpreadsheetResourceTest extends TestCase
     public function test_login_has_an_outer_ip_limit_even_when_identifiers_rotate(): void
     {
         $route = app('router')->getRoutes()->getByName('login.store');
-        $this->assertContains('throttle:30,1', $route->gatherMiddleware());
+        $this->assertContains('throttle:30,1,login', $route->gatherMiddleware());
         $this->assertContains('throttle:10,1', app('router')->getRoutes()->getByName('employees.import.store')->gatherMiddleware());
     }
 }
